@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚽ Serie A Live Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #070f26; color: #f1f5f9; }
+        .custom-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #0f172a; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #475569; }
+        @keyframes pulse-cyan {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .live-dot { animation: pulse-cyan 1.5s infinite; }
+    </style>
+</head>
+<body class="p-4 md:p-8 font-sans min-h-screen">
+
+    <div class="max-w-6xl mx-auto space-y-6">
+        
+        <!-- HEADER -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-blue-900/60 pb-5 gap-4">
+            <div>
+                <h1 class="text-3xl font-black text-cyan-400 tracking-wide flex items-center gap-2 drop-shadow-sm">
+                    🇮🇹 SERIE A LIVE DASHBOARD
+                </h1>
+                <p class="text-slate-400 text-sm mt-1">Saison 2026/27 • Live-Ergebnisse & Standings via ESPN</p>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-3">
+                <div id="live-indicator" class="hidden items-center gap-2 bg-cyan-950/80 border border-cyan-500/50 text-cyan-300 px-3 py-1.5 rounded-lg text-xs font-bold">
+                    <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 live-dot"></span>
+                    LIVE TICKER AKTIV
+                </div>
+                
+                <!-- Spieltag Filter -->
+                <div class="flex items-center gap-2 bg-blue-950/90 border border-blue-800/80 px-3 py-1.5 rounded-xl shadow-inner">
+                    <span class="text-xs text-blue-300 font-semibold">📅 Spieltag:</span>
+                    <select id="matchweek-select" onchange="loadSelectedMatchweek()" class="bg-transparent text-cyan-400 font-bold text-sm focus:outline-none">
+                        <!-- Dynamisch gefüllt -->
+                    </select>
+                </div>
+
+                <button onclick="refreshAllData()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2 rounded-xl shadow-lg transition flex items-center gap-2 border border-blue-400/30">
+                    🔄 Aktualisieren
+                </button>
+            </div>
+        </div>
+
+        <!-- TAB NAVIGATION -->
+        <div class="flex border-b border-blue-900/60 space-x-2">
+            <button id="tab-btn-games" onclick="switchTab('games')" class="px-5 py-2.5 font-bold text-sm rounded-t-xl bg-blue-900/80 text-cyan-300 border-t-2 border-cyan-400 transition shadow-lg">
+                ⚽ Spieltag & Live-Ergebnisse
+            </button>
+            <button id="tab-btn-standings" onclick="switchTab('standings')" class="px-5 py-2.5 font-bold text-sm rounded-t-xl bg-blue-950/40 text-slate-400 hover:text-white transition">
+                📊 Serie A Tabelle
+            </button>
+        </div>
+
+        <!-- TAB 1: SPIELE & LIVE SCORES -->
+        <div id="tab-content-games" class="space-y-6">
+            <div id="games-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="col-span-full text-center py-12 text-slate-400 animate-pulse">
+                    ⌛ Lade Serie A Spieltag...
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: TABELLE -->
+        <div id="tab-content-standings" class="hidden space-y-8">
+            <div class="bg-blue-950/40 p-6 rounded-2xl border border-blue-900/60 shadow-xl space-y-4 backdrop-blur-sm">
+                <div class="flex justify-between items-center border-b border-blue-900/60 pb-3">
+                    <h2 class="text-xl font-bold text-cyan-400 flex items-center gap-2">🏆 Serie A Standings 2026/27</h2>
+                    <div class="flex items-center gap-4 text-xs font-semibold">
+                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span> Champions League</span>
+                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Europa League</span>
+                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Abstieg</span>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto custom-scroll">
+                    <table class="w-full text-left text-sm text-slate-300">
+                        <thead class="bg-blue-950 text-blue-300 uppercase text-xs">
+                            <tr>
+                                <th class="px-3 py-3 min-w-[40px]">#</th>
+                                <th class="px-4 py-3 min-w-[200px]">Club</th>
+                                <th class="px-3 py-3 text-center">Sp</th>
+                                <th class="px-3 py-3 text-center">S</th>
+                                <th class="px-3 py-3 text-center">U</th>
+                                <th class="px-3 py-3 text-center">N</th>
+                                <th class="px-3 py-3 text-center">Tore</th>
+                                <th class="px-3 py-3 text-center">Diff</th>
+                                <th class="px-4 py-3 text-center font-bold text-cyan-300">Pkt</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="divide-y divide-blue-900/40">
+                            <tr><td colspan="9" class="px-4 py-6 text-center text-slate-500">Lade Tabelle...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- JAVASCRIPT LOGIK -->
+    <script>
+        let currentMatchweek = 5;
+
+        // Vollständige Logo-Zuweisung inklusive aller alternativen Schreibweisen
+        const TEAM_LOGOS = {
+            "Inter Mailand": "https://a.espncdn.com/i/teamlogos/soccer/500/110.png",
+            "Inter Milan": "https://a.espncdn.com/i/teamlogos/soccer/500/110.png",
+            "AC Mailand": "https://a.espncdn.com/i/teamlogos/soccer/500/103.png",
+            "AC Milan": "https://a.espncdn.com/i/teamlogos/soccer/500/103.png",
+            "Juventus Turin": "https://a.espncdn.com/i/teamlogos/soccer/500/111.png",
+            "Juventus": "https://a.espncdn.com/i/teamlogos/soccer/500/111.png",
+            "SSC Neapel": "https://a.espncdn.com/i/teamlogos/soccer/500/115.png",
+            "Napoli": "https://a.espncdn.com/i/teamlogos/soccer/500/115.png",
+            "AS Rom": "https://a.espncdn.com/i/teamlogos/soccer/500/104.png",
+            "Roma": "https://a.espncdn.com/i/teamlogos/soccer/500/104.png",
+            "Lazio Rom": "https://a.espncdn.com/i/teamlogos/soccer/500/112.png",
+            "Lazio": "https://a.espncdn.com/i/teamlogos/soccer/500/112.png",
+            "Atalanta Bergamo": "https://a.espncdn.com/i/teamlogos/soccer/500/114.png",
+            "Atalanta": "https://a.espncdn.com/i/teamlogos/soccer/500/114.png",
+            "ACF Fiorentina": "https://a.espncdn.com/i/teamlogos/soccer/500/113.png",
+            "Fiorentina": "https://a.espncdn.com/i/teamlogos/soccer/500/113.png",
+            "FC Bologna": "https://a.espncdn.com/i/teamlogos/soccer/500/107.png",
+            "Bologna": "https://a.espncdn.com/i/teamlogos/soccer/500/107.png",
+            "FC Turin": "https://a.espncdn.com/i/teamlogos/soccer/500/2444.png",
+            "Torino": "https://a.espncdn.com/i/teamlogos/soccer/500/2444.png",
+            "AC Monza": "https://a.espncdn.com/i/teamlogos/soccer/500/12948.png",
+            "Monza": "https://a.espncdn.com/i/teamlogos/soccer/500/12948.png",
+            "CFC Genua": "https://a.espncdn.com/i/teamlogos/soccer/500/119.png",
+            "Genoa": "https://a.espncdn.com/i/teamlogos/soccer/500/119.png",
+            "Udinese Calcio": "https://a.espncdn.com/i/teamlogos/soccer/500/116.png",
+            "Udinese": "https://a.espncdn.com/i/teamlogos/soccer/500/116.png",
+            "Verona": "https://a.espncdn.com/i/teamlogos/soccer/500/162.png",
+            "Hellas Verona": "https://a.espncdn.com/i/teamlogos/soccer/500/162.png",
+            "Cagliari Calcio": "https://a.espncdn.com/i/teamlogos/soccer/500/108.png",
+            "Cagliari": "https://a.espncdn.com/i/teamlogos/soccer/500/108.png",
+            "Empoli": "https://a.espncdn.com/i/teamlogos/soccer/500/109.png",
+            "US Lecce": "https://a.espncdn.com/i/teamlogos/soccer/500/3640.png",
+            "Lecce": "https://a.espncdn.com/i/teamlogos/soccer/500/3640.png",
+            "Parma Calcio 1913": "https://a.espncdn.com/i/teamlogos/soccer/500/118.png",
+            "Parma": "https://a.espncdn.com/i/teamlogos/soccer/500/118.png",
+            "Como 1907": "https://a.espncdn.com/i/teamlogos/soccer/500/3561.png",
+            "Como": "https://a.espncdn.com/i/teamlogos/soccer/500/3561.png",
+            "FC Venedig": "https://a.espncdn.com/i/teamlogos/soccer/500/4096.png",
+            "Venezia": "https://a.espncdn.com/i/teamlogos/soccer/500/4096.png",
+            "US Sassuolo Calcio": "https://a.espncdn.com/i/teamlogos/soccer/500/117.png",
+            "Sassuolo": "https://a.espncdn.com/i/teamlogos/soccer/500/117.png",
+            "Frosinone Calcio": "https://a.espncdn.com/i/teamlogos/soccer/500/11005.png",
+            "Frosinone": "https://a.espncdn.com/i/teamlogos/soccer/500/11005.png"
+        };
+
+        const MATCHWEEKS_DATA = {
+            1: [
+                { home: "CFC Genua", away: "Inter Mailand", homeScore: 2, awayScore: 2, date: "22.08.2026", status: "ENDE" },
+                { home: "Parma Calcio 1913", away: "ACF Fiorentina", homeScore: 1, awayScore: 1, date: "22.08.2026", status: "ENDE" },
+                { home: "AC Mailand", away: "FC Turin", homeScore: 2, awayScore: 2, date: "23.08.2026", status: "ENDE" },
+                { home: "Empoli", away: "AC Monza", homeScore: 0, awayScore: 0, date: "23.08.2026", status: "ENDE" },
+                { home: "FC Bologna", away: "Udinese Calcio", homeScore: 1, awayScore: 1, date: "24.08.2026", status: "ENDE" },
+                { home: "Verona", away: "SSC Neapel", homeScore: 3, awayScore: 0, date: "24.08.2026", status: "ENDE" },
+                { home: "Cagliari Calcio", away: "AS Rom", homeScore: 0, awayScore: 0, date: "25.08.2026", status: "ENDE" },
+                { home: "Lazio Rom", away: "FC Venedig", homeScore: 3, awayScore: 1, date: "25.08.2026", status: "ENDE" },
+                { home: "US Lecce", away: "Atalanta Bergamo", homeScore: 0, awayScore: 4, date: "26.08.2026", status: "ENDE" },
+                { home: "Juventus Turin", away: "Como 1907", homeScore: 3, awayScore: 0, date: "26.08.2026", status: "ENDE" }
+            ],
+            2: [
+                { home: "Parma Calcio 1913", away: "AC Mailand", homeScore: 2, awayScore: 1, date: "29.08.2026", status: "ENDE" },
+                { home: "Udinese Calcio", away: "Lazio Rom", homeScore: 2, awayScore: 1, date: "29.08.2026", status: "ENDE" },
+                { home: "Inter Mailand", away: "US Lecce", homeScore: 2, awayScore: 0, date: "30.08.2026", status: "ENDE" },
+                { home: "AC Monza", away: "CFC Genua", homeScore: 0, awayScore: 1, date: "30.08.2026", status: "ENDE" },
+                { home: "FC Bologna", away: "Empoli", homeScore: 1, awayScore: 1, date: "31.08.2026", status: "ENDE" },
+                { home: "FC Turin", away: "Atalanta Bergamo", homeScore: 2, awayScore: 1, date: "31.08.2026", status: "ENDE" },
+                { home: "ACF Fiorentina", away: "FC Venedig", homeScore: 0, awayScore: 0, date: "31.08.2026", status: "ENDE" },
+                { home: "SSC Neapel", away: "FC Bologna", homeScore: 3, awayScore: 0, date: "31.08.2026", status: "ENDE" },
+                { home: "AS Rom", away: "Empoli", homeScore: 1, awayScore: 2, date: "01.09.2026", status: "ENDE" },
+                { home: "Verona", away: "Juventus Turin", homeScore: 0, awayScore: 3, date: "01.09.2026", status: "ENDE" }
+            ],
+            3: [
+                { home: "FC Venedig", away: "FC Turin", homeScore: 0, awayScore: 1, date: "04.09.2026", status: "ENDE" },
+                { home: "Inter Mailand", away: "Atalanta Bergamo", homeScore: 4, awayScore: 0, date: "05.09.2026", status: "ENDE" },
+                { home: "US Lecce", away: "Cagliari Calcio", homeScore: 1, awayScore: 0, date: "05.09.2026", status: "ENDE" },
+                { home: "FC Bologna", away: "Empoli", homeScore: 1, awayScore: 1, date: "06.09.2026", status: "ENDE" },
+                { home: "Lazio Rom", away: "AC Mailand", homeScore: 2, awayScore: 2, date: "06.09.2026", status: "ENDE" },
+                { home: "SSC Neapel", away: "Parma Calcio 1913", homeScore: 2, awayScore: 1, date: "07.09.2026", status: "ENDE" },
+                { home: "Juventus Turin", away: "AS Rom", homeScore: 0, awayScore: 0, date: "07.09.2026", status: "ENDE" },
+                { home: "Udinese Calcio", away: "Como 1907", homeScore: 1, awayScore: 0, date: "07.09.2026", status: "ENDE" },
+                { home: "CFC Genua", away: "Verona", homeScore: 0, awayScore: 2, date: "08.09.2026", status: "ENDE" },
+                { home: "ACF Fiorentina", away: "AC Monza", homeScore: 2, awayScore: 2, date: "08.09.2026", status: "ENDE" }
+            ],
+            4: [
+                { home: "SSC Neapel", away: "FC Bologna", homeScore: 1, awayScore: 0, date: "13.09.2026", status: "ENDE" },
+                { home: "US Sassuolo Calcio", away: "Juventus Turin", homeScore: 3, awayScore: 2, date: "13.09.2026", status: "ENDE" },
+                { home: "FC Turin", away: "AS Rom", homeScore: 0, awayScore: 2, date: "14.09.2026", status: "ENDE" },
+                { home: "Como 1907", away: "Parma Calcio 1913", homeScore: 2, awayScore: 1, date: "14.09.2026", status: "ENDE" },
+                { home: "Inter Mailand", away: "Udinese Calcio", homeScore: 5, awayScore: 3, date: "14.09.2026", status: "ENDE" }
+            ],
+            5: [
+                { home: "AC Monza", away: "US Sassuolo Calcio", homeScore: 2, awayScore: 1, date: "18.09.2026", status: "ENDE" },
+                { home: "FC Bologna", away: "FC Turin", homeScore: 1, awayScore: 1, date: "19.09.2026", status: "ENDE" },
+                { home: "Udinese Calcio", away: "Cagliari Calcio", homeScore: 0, awayScore: 1, date: "19.09.2026", status: "ENDE" },
+                { home: "AS Rom", away: "Inter Mailand", homeScore: 2, awayScore: 2, date: "19.09.2026", status: "ENDE" },
+                { home: "FC Venedig", away: "Lazio Rom", homeScore: 0, awayScore: 2, date: "19.09.2026", status: "ENDE" },
+                { home: "ACF Fiorentina", away: "SSC Neapel", homeScore: 1, awayScore: 1, date: "20.09.2026", status: "ENDE" },
+                { home: "Frosinone Calcio", away: "Como 1907", homeScore: 2, awayScore: 0, date: "20.09.2026", status: "ENDE" },
+                { home: "Parma Calcio 1913", away: "CFC Genua", homeScore: 2, awayScore: 1, date: "20.09.2026", status: "ENDE" },
+                { home: "Juventus Turin", away: "Atalanta Bergamo", homeScore: 2, awayScore: 0, date: "20.09.2026", status: "ENDE" },
+                { home: "AC Mailand", away: "US Lecce", homeScore: 3, awayScore: 0, date: "20.09.2026", status: "ENDE" }
+            ],
+            6: [
+                { home: "CFC Genua", away: "ACF Fiorentina", homeScore: "-", awayScore: "-", date: "10.10.2026 • 15:00 Uhr", status: "GEPLANT" },
+                { home: "Inter Mailand", away: "Parma Calcio 1913", homeScore: "-", awayScore: "-", date: "10.10.2026 • 18:00 Uhr", status: "GEPLANT" },
+                { home: "SSC Neapel", away: "Frosinone Calcio", homeScore: "-", awayScore: "-", date: "10.10.2026 • 20:45 Uhr", status: "GEPLANT" },
+                { home: "Como 1907", away: "AS Rom", homeScore: "-", awayScore: "-", date: "11.10.2026 • 12:30 Uhr", status: "GEPLANT" },
+                { home: "Lazio Rom", away: "AC Monza", homeScore: "-", awayScore: "-", date: "11.10.2026 • 15:00 Uhr", status: "GEPLANT" },
+                { home: "US Lecce", away: "FC Bologna", homeScore: "-", awayScore: "-", date: "11.10.2026 • 15:00 Uhr", status: "GEPLANT" },
+                { home: "US Sassuolo Calcio", away: "AC Mailand", homeScore: "-", awayScore: "-", date: "11.10.2026 • 18:00 Uhr", status: "GEPLANT" },
+                { home: "Cagliari Calcio", away: "Juventus Turin", homeScore: "-", awayScore: "-", date: "11.10.2026 • 20:45 Uhr", status: "GEPLANT" },
+                { home: "Atalanta Bergamo", away: "FC Venedig", homeScore: "-", awayScore: "-", date: "12.10.2026 • 18:30 Uhr", status: "GEPLANT" },
+                { home: "FC Turin", away: "Udinese Calcio", homeScore: "-", awayScore: "-", date: "12.10.2026 • 20:45 Uhr", status: "GEPLANT" }
+            ]
+        };
+
+        function initMatchweekSelect() {
+            const select = document.getElementById("matchweek-select");
+            select.innerHTML = "";
+            
+            for (let i = 1; i <= 38; i++) {
+                const opt = document.createElement("option");
+                opt.value = i;
+                opt.textContent = `${i}. Spieltag`;
+                opt.className = "bg-slate-900 text-white";
+                select.appendChild(opt);
+            }
+            select.value = 5;
+        }
+
+        function switchTab(tabName) {
+            const tabs = ['games', 'standings'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-btn-${t}`);
+                const content = document.getElementById(`tab-content-${t}`);
+                if (t === tabName) {
+                    btn.className = "px-5 py-2.5 font-bold text-sm rounded-t-xl bg-blue-900/80 text-cyan-300 border-t-2 border-cyan-400 transition shadow-lg";
+                    content.classList.remove("hidden");
+                } else {
+                    btn.className = "px-5 py-2.5 font-bold text-sm rounded-t-xl bg-blue-950/40 text-slate-400 hover:text-white transition";
+                    content.classList.add("hidden");
+                }
+            });
+        }
+
+        async function initDashboard() {
+            initMatchweekSelect();
+            await refreshAllData();
+        }
+
+        async function refreshAllData() {
+            const select = document.getElementById("matchweek-select");
+            currentMatchweek = parseInt(select.value);
+            await loadSerieAGames(currentMatchweek);
+            await loadSerieAStandings();
+        }
+
+        function loadSelectedMatchweek() {
+            const select = document.getElementById("matchweek-select");
+            currentMatchweek = parseInt(select.value);
+            loadSerieAGames(currentMatchweek);
+        }
+
+        async function loadSerieAGames(weekNum) {
+            const container = document.getElementById("games-container");
+            container.innerHTML = "";
+
+            if (MATCHWEEKS_DATA[weekNum]) {
+                renderStaticMatches(MATCHWEEKS_DATA[weekNum], container);
+                return;
+            }
+
+            container.innerHTML = '<div class="col-span-full text-center py-12 text-slate-400 animate-pulse">Lade Spieltag ' + weekNum + ' direkt von ESPN...</div>';
+            
+            const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/ita.1/scoreboard?week=${weekNum}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                const events = data.events || [];
+
+                if (events.length > 0) {
+                    renderApiEvents(events, container);
+                } else {
+                    container.innerHTML = `<div class="col-span-full text-center py-12 text-slate-500">Für den ${weekNum}. Spieltag sind bei ESPN noch keine Ansetzungen freigeschaltet.</div>`;
+                }
+            } catch (error) {
+                console.error("Fehler beim Abrufen der API:", error);
+                container.innerHTML = '<div class="col-span-full text-center py-12 text-rose-400">Fehler beim Laden der Spieldaten von ESPN.</div>';
+            }
+        }
+
+        function renderStaticMatches(matches, container) {
+            matches.forEach(match => {
+                const card = document.createElement("div");
+                card.className = "bg-blue-950/40 p-5 rounded-2xl border border-blue-900/60 shadow-lg space-y-4 hover:border-blue-700/60 transition backdrop-blur-sm";
+
+                const homeLogo = TEAM_LOGOS[match.home] || "https://a.espncdn.com/i/teamlogos/soccer/500/default-team-logo.png";
+                const awayLogo = TEAM_LOGOS[match.away] || "https://a.espncdn.com/i/teamlogos/soccer/500/default-team-logo.png";
+
+                let badgeClass = "bg-blue-950 text-blue-300 border border-blue-800";
+                if (match.status === "ENDE") {
+                    badgeClass = "bg-emerald-950/80 text-emerald-300 border border-emerald-700/60 font-bold";
+                }
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center text-xs border-b border-blue-900/50 pb-2.5">
+                        <span class="text-blue-400 font-bold">SERIE A</span>
+                        <span class="px-2.5 py-0.5 rounded-full text-[11px] ${badgeClass}">${match.status === 'ENDE' ? 'ENDE (' + match.date + ')' : match.date}</span>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <img src="${homeLogo}" class="w-8 h-8 object-contain filter drop-shadow" alt="Logo">
+                                <span class="font-bold text-white text-base">${match.home}</span>
+                            </div>
+                            <span class="text-2xl font-black ${match.homeScore > match.awayScore ? 'text-cyan-400' : 'text-slate-200'}">
+                                ${match.homeScore}
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <img src="${awayLogo}" class="w-8 h-8 object-contain filter drop-shadow" alt="Logo">
+                                <span class="font-bold text-white text-base">${match.away}</span>
+                            </div>
+                            <span class="text-2xl font-black ${match.awayScore > match.homeScore ? 'text-cyan-400' : 'text-slate-200'}">
+                                ${match.awayScore}
+                            </span>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderApiEvents(events, container) {
+            container.innerHTML = "";
+            let hasLiveMatches = false;
+
+            events.forEach(event => {
+                const competition = event.competitions[0];
+                const competitors = competition.competitors;
+                
+                const homeTeamData = competitors.find(c => c.homeAway === 'home');
+                const awayTeamData = competitors.find(c => c.homeAway === 'away');
+
+                const homeName = homeTeamData.team.displayName;
+                const awayName = awayTeamData.team.displayName;
+                const homeLogo = homeTeamData.team.logo;
+                const awayLogo = awayTeamData.team.logo;
+                const homeScore = homeTeamData.score || "0";
+                const awayScore = awayTeamData.score || "0";
+
+                const statusType = event.status.type.name;
+                const statusDetail = event.status.type.detail;
+
+                let badgeText = statusDetail;
+                let badgeClass = "bg-blue-950 text-blue-300 border border-blue-800";
+
+                if (statusType === "STATUS_FINAL") {
+                    badgeClass = "bg-emerald-950/80 text-emerald-300 border border-emerald-700/60 font-bold";
+                    badgeText = "ENDE";
+                } else if (statusType === "STATUS_IN_PROGRESS") {
+                    badgeClass = "bg-rose-950/80 text-rose-300 border border-rose-700/60 font-bold animate-pulse";
+                    hasLiveMatches = true;
+                }
+
+                const card = document.createElement("div");
+                card.className = "bg-blue-950/40 p-5 rounded-2xl border border-blue-900/60 shadow-lg space-y-4 hover:border-blue-700/60 transition backdrop-blur-sm";
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center text-xs border-b border-blue-900/50 pb-2.5">
+                        <span class="text-blue-400 font-bold">SERIE A</span>
+                        <span class="px-2.5 py-0.5 rounded-full text-[11px] ${badgeClass}">${badgeText}</span>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <img src="${homeLogo}" class="w-8 h-8 object-contain filter drop-shadow" alt="Logo">
+                                <span class="font-bold text-white text-base">${homeName}</span>
+                            </div>
+                            <span class="text-2xl font-black text-slate-200">
+                                ${statusType === 'STATUS_SCHEDULED' ? '-' : homeScore}
+                            </span>
+                        </div>
+
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <img src="${awayLogo}" class="w-8 h-8 object-contain filter drop-shadow" alt="Logo">
+                                <span class="font-bold text-white text-base">${awayName}</span>
+                            </div>
+                            <span class="text-2xl font-black text-slate-200">
+                                ${statusType === 'STATUS_SCHEDULED' ? '-' : awayScore}
+                            </span>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            const liveIndicator = document.getElementById("live-indicator");
+            if (hasLiveMatches) {
+                liveIndicator.classList.remove("hidden");
+                liveIndicator.classList.add("flex");
+            } else {
+                liveIndicator.classList.add("hidden");
+                liveIndicator.classList.remove("flex");
+            }
+        }
+
+        async function loadSerieAStandings() {
+            const url = "https://site.api.espn.com/apis/v2/sports/soccer/ita.1/standings";
+            const tbody = document.getElementById("table-body");
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                const entries = data.children?.[0]?.standings?.entries || data.standings?.entries || [];
+                renderTable(entries, tbody);
+
+            } catch (error) {
+                console.error("Fehler beim Abrufen der Tabelle:", error);
+                tbody.innerHTML = '<tr><td colspan="9" class="px-4 py-6 text-center text-rose-400">Fehler beim Laden der Tabelle.</td></tr>';
+            }
+        }
+
+        function renderTable(entries, tbody) {
+            tbody.innerHTML = "";
+
+            if (!entries || entries.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="9" class="px-4 py-6 text-center text-slate-500">Keine Tabellendaten gefunden.</td></tr>';
+                return;
+            }
+
+            entries.forEach((entry, idx) => {
+                const team = entry.team;
+                const stats = entry.stats || [];
+
+                const getStat = (name) => stats.find(s => s.name === name)?.displayValue || "0";
+
+                const rank = idx + 1;
+                const games = getStat("gamesPlayed");
+                const wins = getStat("wins");
+                const draws = getStat("ties");
+                const losses = getStat("losses");
+                const points = getStat("points");
+                const diff = getStat("pointDifferential");
+                const goalsFor = getStat("pointsFor");
+                const goalsAgainst = getStat("pointsAgainst");
+
+                let rankStyle = "text-slate-400 border-l-2 border-transparent";
+                if (rank <= 4) rankStyle = "text-cyan-400 font-extrabold border-l-4 border-cyan-400 pl-1";
+                else if (rank === 5) rankStyle = "text-blue-400 font-bold border-l-4 border-blue-500 pl-1";
+                else if (rank >= 18) rankStyle = "text-rose-400 font-bold border-l-4 border-rose-500 pl-1";
+
+                const row = document.createElement("tr");
+                row.className = idx % 2 === 0 ? "bg-blue-950/30 hover:bg-blue-900/50 transition" : "bg-blue-950/10 hover:bg-blue-900/50 transition";
+
+                row.innerHTML = `
+                    <td class="px-3 py-3 ${rankStyle}">${rank}</td>
+                    <td class="px-4 py-3 font-semibold text-white flex items-center gap-3">
+                        <img src="${team?.logos?.[0]?.href || ''}" class="w-6 h-6 object-contain" alt="Logo">
+                        ${team?.displayName || 'Unbekannt'}
+                    </td>
+                    <td class="px-3 py-3 text-center text-slate-300">${games}</td>
+                    <td class="px-3 py-3 text-center text-slate-300">${wins}</td>
+                    <td class="px-3 py-3 text-center text-slate-300">${draws}</td>
+                    <td class="px-3 py-3 text-center text-slate-300">${losses}</td>
+                    <td class="px-3 py-3 text-center text-slate-400">${goalsFor}:${goalsAgainst}</td>
+                    <td class="px-3 py-3 text-center font-medium ${parseInt(diff) > 0 ? 'text-emerald-400' : (parseInt(diff) < 0 ? 'text-rose-400' : 'text-slate-400')}">${diff}</td>
+                    <td class="px-4 py-3 text-center font-black text-cyan-300 text-base">${points}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", initDashboard);
+    </script>
+</body>
+</html>
