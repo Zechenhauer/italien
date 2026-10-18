@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Italien</title>
+    <title>Italien - Serie A</title>
     <!-- Perfektes SVG App-Icon für iPhone & Android direkt im Code -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23070f26%22/><text x=%2250%22 y=%2265%22 font-size=%2255%22 text-anchor=%22middle%22>⚽</text></svg>">
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%23070f26%22/><text x=%2250%22 y=%2265%22 font-size=%2255%22 text-anchor=%22middle%22>⚽</text></svg>">
@@ -33,7 +33,7 @@
                 <h1 class="text-3xl font-black text-emerald-400 tracking-wide flex items-center gap-2 drop-shadow-sm">
                     🇮🇹 SERIE A DASHBOARD & SPIELTAGE
                 </h1>
-                <p class="text-slate-400 text-sm mt-1">Saison 2026/27 • Live-Scores & Tabelle via ESPN API</p>
+                <p class="text-slate-400 text-sm mt-1">Saison 2026/27 • Live-Scores, Torschützen & Tabelle via ESPN API</p>
             </div>
             
             <div class="flex flex-wrap items-center gap-3">
@@ -42,12 +42,49 @@
                     LIVE SPIEL LÄUFT (Auto-Update 15s)
                 </div>
                 
-                <!-- Zeitraum / Modus Auswahl -->
+                <!-- Spieltag / Zeitraum Auswahl -->
                 <div class="flex items-center gap-2 bg-blue-950 border border-blue-800 px-3 py-1.5 rounded-lg shadow-inner">
-                    <span class="text-xs text-blue-300 font-semibold">📅 Zeitraum:</span>
-                    <select id="timeframe-select" onchange="onTimeframeChange()" class="bg-transparent text-emerald-400 font-bold text-sm focus:outline-none cursor-pointer">
-                        <option value="next7" selected>📅 Nächste 7 Tage</option>
-                        <option value="prev7">⏮️ Vergangene 7 Tage</option>
+                    <span class="text-xs text-blue-300 font-semibold">📅 Spieltag:</span>
+                    <select id="timeframe-select" onchange="onTimeframeChange()" class="bg-transparent text-emerald-400 font-bold text-sm focus:outline-none cursor-pointer max-w-[260px]">
+                        <option value="1">1. Spieltag (22.08. - 24.08.)</option>
+                        <option value="2">2. Spieltag (28.08. - 31.08.)</option>
+                        <option value="3">3. Spieltag (04.09. - 07.09.)</option>
+                        <option value="4">4. Spieltag (11.09. - 14.09.)</option>
+                        <option value="5">5. Spieltag (18.09. - 20.09.)</option>
+                        <option value="6">6. Spieltag (10.10. - 12.10.)</option>
+                        <option value="7" selected>7. Spieltag (16.10. - 19.10.)</option>
+                        <option value="8">8. Spieltag (23.10. - 25.10.)</option>
+                        <option value="9">9. Spieltag (27.10. - 29.10.)</option>
+                        <option value="10">10. Spieltag (31.10. - 02.11.)</option>
+                        <option value="11">11. Spieltag (06.11. - 08.11.)</option>
+                        <option value="12">12. Spieltag (21.11. - 23.11.)</option>
+                        <option value="13">13. Spieltag (27.11. - 30.11.)</option>
+                        <option value="14">14. Spieltag (04.12. - 07.12.)</option>
+                        <option value="15">15. Spieltag (11.12. - 14.12.)</option>
+                        <option value="16">16. Spieltag (18.12. - 20.12.)</option>
+                        <option value="17">17. Spieltag (02.01. - 03.01.)</option>
+                        <option value="18">18. Spieltag (05.01. - 07.01.)</option>
+                        <option value="19">19. Spieltag (09.01. - 11.01.)</option>
+                        <option value="20">20. Spieltag (17.01. - 17.01.)</option>
+                        <option value="21">21. Spieltag (24.01. - 24.01.)</option>
+                        <option value="22">22. Spieltag (31.01. - 31.01.)</option>
+                        <option value="23">23. Spieltag (07.02. - 07.02.)</option>
+                        <option value="24">24. Spieltag (14.02. - 14.02.)</option>
+                        <option value="25">25. Spieltag (21.02. - 21.02.)</option>
+                        <option value="26">26. Spieltag (28.02. - 28.02.)</option>
+                        <option value="27">27. Spieltag (07.03. - 07.03.)</option>
+                        <option value="28">28. Spieltag (14.03. - 14.03.)</option>
+                        <option value="29">29. Spieltag (21.03. - 21.03.)</option>
+                        <option value="30">30. Spieltag (04.04. - 04.04.)</option>
+                        <option value="31">31. Spieltag (11.04. - 11.04.)</option>
+                        <option value="32">32. Spieltag (18.04. - 18.04.)</option>
+                        <option value="33">33. Spieltag (25.04. - 25.04.)</option>
+                        <option value="34">34. Spieltag (02.05. - 02.05.)</option>
+                        <option value="35">35. Spieltag (09.05. - 09.05.)</option>
+                        <option value="36">36. Spieltag (16.05. - 16.05.)</option>
+                        <option value="37">37. Spieltag (23.05. - 23.05.)</option>
+                        <option value="38">38. Spieltag (30.05. - 30.05.)</option>
+                        <option value="all">Alle Spieltage</option>
                         <option value="single">📆 Einzelnes Datum...</option>
                     </select>
                 </div>
@@ -123,6 +160,7 @@
     <script>
         let leagueEvents = [];
         let autoRefreshTimer = null;
+        let matchDetailsCache = {};
 
         function switchTab(tabName) {
             const tabs = ['games', 'standings'];
@@ -168,38 +206,82 @@
             return `${y}${m}${d}`;
         }
 
+        // Exakte Datums-Zuordnung für alle 38 Spieltage basierend auf deinen Vorgaben
+        const matchdayDateMap = {
+            1: ['20260822', '20260823', '20260824'],
+            2: ['20260828', '20260829', '20260830', '20260831'],
+            3: ['20260904', '20260905', '20260906', '20260907'],
+            4: ['20260911', '20260912', '20260913', '20260914'],
+            5: ['20260918', '20260919', '20260920'],
+            6: ['20261010', '20261011', '20261012'],
+            7: ['20261016', '20261017', '20261018', '20261019'],
+            8: ['20261023', '20261024', '20261025'],
+            9: ['20261027', '20261028', '20261029'],
+            10: ['20261031', '20261101', '20261102'],
+            11: ['20261106', '20261107', '20261108'],
+            12: ['20261121', '20261122', '20261123'],
+            13: ['20261127', '20261128', '20261129', '20261130'],
+            14: ['20261204', '20261205', '20261206', '20261207'],
+            15: ['20261211', '20261212', '20261213', '20261214'],
+            16: ['20261218', '20261219', '20261220'],
+            17: ['20270102', '20270103'],
+            18: ['20270105', '20270106', '20270107'],
+            19: ['20270109', '20270110', '20270111'],
+            20: ['20270117'],
+            21: ['20270124'],
+            22: ['20270131'],
+            23: ['20270207'],
+            24: ['20270214'],
+            25: ['20270221'],
+            26: ['20270228'],
+            27: ['20270307'],
+            28: ['20270314'],
+            29: ['20270321'],
+            30: ['20270404'],
+            31: ['20270411'],
+            32: ['20270418'],
+            33: ['20270425'],
+            34: ['20270502'],
+            35: ['20270509'],
+            36: ['20270516'],
+            37: ['20270523'],
+            38: ['20270530']
+        };
+
         async function loadSerieAGames() {
             const container = document.getElementById("games-container");
             container.innerHTML = `<div class="text-center py-12 text-slate-400 animate-pulse">⌛ Lade Serie A Spiele von ESPN...</div>`;
 
             const mode = document.getElementById("timeframe-select").value;
             let datesToFetch = [];
-            let baseDate = new Date();
 
-            if (mode === 'next7') {
-                for (let i = 0; i < 7; i++) {
-                    let d = new Date(baseDate);
-                    d.setDate(baseDate.getDate() + i);
-                    datesToFetch.push(formatDateKey(d));
-                }
-            } else if (mode === 'prev7') {
-                for (let i = 6; i >= 0; i--) {
-                    let d = new Date(baseDate);
-                    d.setDate(baseDate.getDate() - i);
-                    datesToFetch.push(formatDateKey(d));
-                }
-            } else if (mode === 'single') {
+            if (mode === 'single') {
                 const val = document.getElementById("single-date-input").value;
                 if (val) {
                     datesToFetch.push(val.replace(/-/g, ''));
                 } else {
-                    datesToFetch.push(formatDateKey(baseDate));
+                    datesToFetch.push(formatDateKey(new Date()));
                 }
+            } else if (mode === 'all') {
+                let start = new Date(2026, 7, 1);
+                let end = new Date(2027, 5, 30);
+                for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 7)) {
+                    datesToFetch.push(formatDateKey(d));
+                }
+            } else {
+                datesToFetch = matchdayDateMap[parseInt(mode)] || [];
             }
 
             try {
-                const promises = datesToFetch.map(dateStr => 
-                    fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/ita.1/scoreboard?dates=${dateStr}`)
+                let fetchUrls = [];
+                if (mode === 'all') {
+                    fetchUrls = [`https://site.api.espn.com/apis/site/v2/sports/soccer/ita.1/scoreboard`];
+                } else {
+                    fetchUrls = datesToFetch.map(dateStr => `https://site.api.espn.com/apis/site/v2/sports/soccer/ita.1/scoreboard?dates=${dateStr}`);
+                }
+
+                const promises = fetchUrls.map(url => 
+                    fetch(url)
                         .then(res => res.json())
                         .then(data => data.events || [])
                         .catch(() => [])
@@ -219,6 +301,37 @@
             } catch (error) {
                 console.error("Fehler beim Abrufen der Spieldaten:", error);
                 container.innerHTML = '<div class="text-center py-8 text-rose-400">⚠️ Fehler beim Laden der Spieldaten.</div>';
+            }
+        }
+
+        async function fetchMatchDetails(eventId) {
+            if (matchDetailsCache[eventId]) return matchDetailsCache[eventId];
+            try {
+                const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/ita.1/summary?event=${eventId}`);
+                const data = await res.json();
+                
+                let goals = [];
+                const details = data.details || [];
+                details.forEach(item => {
+                    if (item.scoringPlay) {
+                        goals.push({
+                            text: item.text || 'Tor'
+                        });
+                    }
+                });
+
+                if (goals.length === 0 && data.goals) {
+                    data.goals.forEach(g => {
+                        goals.push({
+                            text: `${g.athlete?.displayName || 'Spieler'} (${g.clock?.displayValue || ''}')`
+                        });
+                    });
+                }
+
+                matchDetailsCache[eventId] = goals;
+                return goals;
+            } catch (e) {
+                return [];
             }
         }
 
@@ -242,12 +355,12 @@
             }
         }
 
-        function renderGroupedGames() {
+        async function renderGroupedGames() {
             const container = document.getElementById("games-container");
             container.innerHTML = "";
 
             if (leagueEvents.length === 0) {
-                container.innerHTML = `<div class="text-center py-8 text-slate-500">Für diesen Zeitraum sind keine Serie A Spiele hinterlegt.</div>`;
+                container.innerHTML = `<div class="text-center py-8 text-slate-500">Für diesen Spieltag sind keine Serie A Spiele hinterlegt.</div>`;
                 return;
             }
 
@@ -263,7 +376,7 @@
                 groupedMap[dateKey].push(event);
             });
 
-            Object.keys(groupedMap).forEach(dateHeader => {
+            for (const dateHeader of Object.keys(groupedMap)) {
                 const daySection = document.createElement("div");
                 daySection.className = "space-y-4";
 
@@ -278,7 +391,7 @@
                 container.appendChild(daySection);
                 const groupGrid = daySection.querySelector(`#group-${dateHeader.replace(/[^a-zA-Z0-9]/g, '')}`);
 
-                groupedMap[dateHeader].forEach(event => {
+                for (const event of groupedMap[dateHeader]) {
                     const competition = event.competitions?.[0];
                     const home = competition?.competitors?.find(c => c.homeAway === "home");
                     const away = competition?.competitors?.find(c => c.homeAway === "away");
@@ -301,42 +414,58 @@
                         statusText = "ENDE";
                     }
 
+                    // Torschützen laden
+                    let goalsHtml = "";
+                    if ((isCompleted || isLive || (home?.score > 0 || away?.score > 0)) && event.id) {
+                        const goals = await fetchMatchDetails(event.id);
+                        if (goals && goals.length > 0) {
+                            const goalItems = goals.map(g => `<div class="text-xs text-slate-300 flex items-center gap-1.5 py-0.5"><span>⚽</span> <span class="truncate">${g.text}</span></div>`).join('');
+                            goalsHtml = `
+                                <div class="mt-3 pt-2 border-t border-blue-900/40 space-y-1 bg-blue-950/30 p-2 rounded-lg">
+                                    <div class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Torschützen:</div>
+                                    ${goalItems}
+                                </div>
+                            `;
+                        }
+                    }
+
                     const card = document.createElement("div");
-                    card.className = "bg-blue-950/40 p-5 rounded-xl border border-blue-900/60 shadow-lg space-y-4 hover:border-blue-700/60 transition backdrop-blur-sm";
+                    card.className = "bg-blue-950/40 p-4 rounded-xl border border-blue-900/60 shadow-lg space-y-3 hover:border-blue-700/60 transition backdrop-blur-sm";
 
                     card.innerHTML = `
-                        <div class="flex justify-between items-center border-b border-blue-900/50 pb-2">
-                            <span class="text-blue-400 text-xs font-medium">${formattedTimeStr}</span>
+                        <div class="flex justify-between items-center text-xs text-slate-400 font-semibold border-b border-blue-900/40 pb-2">
+                            <span>${formattedTimeStr}</span>
                             <span class="px-2.5 py-0.5 rounded-full text-[11px] ${statusBadgeClass}">${statusText}</span>
                         </div>
 
-                        <div class="space-y-3">
-                            <!-- HEIMTEAM -->
-                            <div class="flex justify-between items-center">
-                                <div class="flex items-center gap-3">
-                                    <img src="${home?.team?.logo || ''}" class="w-8 h-8 object-contain filter drop-shadow" alt="Logo">
-                                    <span class="font-bold text-white text-base">${home?.team?.displayName || 'Heimteam'}</span>
+                        <div class="space-y-2">
+                            <!-- Heimteam -->
+                            <div class="flex justify-between items-center bg-blue-900/20 border border-blue-900/40 rounded-lg p-2.5 ${home?.winner ? 'border-emerald-500/50 bg-emerald-950/20' : ''}">
+                                <div class="flex items-center gap-2.5 overflow-hidden">
+                                    <img src="${home?.team?.logo || ''}" class="w-6 h-6 object-contain flex-shrink-0" alt="Logo">
+                                    <span class="font-bold text-white text-sm truncate ${home?.winner ? 'text-emerald-400' : ''}">${home?.team?.displayName || 'Heimteam'}</span>
                                 </div>
-                                <span class="text-2xl font-black ${home?.winner ? 'text-emerald-400' : 'text-slate-200'}">
-                                    ${home?.score !== undefined ? home.score : '-'}
+                                <span class="bg-blue-950 border border-blue-800 text-white font-black px-2.5 py-1 rounded-md text-base min-w-[36px] text-center ${home?.winner ? 'border-emerald-500 text-emerald-400 bg-emerald-950/40' : ''}">
+                                    ${home?.score !== undefined && home?.score !== null ? home.score : '-'}
                                 </span>
                             </div>
 
-                            <!-- AUSWÄRTSTEAM -->
-                            <div class="flex justify-between items-center">
-                                <div class="flex items-center gap-3">
-                                    <img src="${away?.team?.logo || ''}" class="w-8 h-8 object-contain filter drop-shadow" alt="Logo">
-                                    <span class="font-bold text-white text-base">${away?.team?.displayName || 'Auswärtsteam'}</span>
+                            <!-- Auswärtsteam -->
+                            <div class="flex justify-between items-center bg-blue-900/20 border border-blue-900/40 rounded-lg p-2.5 ${away?.winner ? 'border-emerald-500/50 bg-emerald-950/20' : ''}">
+                                <div class="flex items-center gap-2.5 overflow-hidden">
+                                    <img src="${away?.team?.logo || ''}" class="w-6 h-6 object-contain flex-shrink-0" alt="Logo">
+                                    <span class="font-bold text-white text-sm truncate ${away?.winner ? 'text-emerald-400' : ''}">${away?.team?.displayName || 'Auswärtsteam'}</span>
                                 </div>
-                                <span class="text-2xl font-black ${away?.winner ? 'text-emerald-400' : 'text-slate-200'}">
-                                    ${away?.score !== undefined ? away.score : '-'}
+                                <span class="bg-blue-950 border border-blue-800 text-white font-black px-2.5 py-1 rounded-md text-base min-w-[36px] text-center ${away?.winner ? 'border-emerald-500 text-emerald-400 bg-emerald-950/40' : ''}">
+                                    ${away?.score !== undefined && away?.score !== null ? away.score : '-'}
                                 </span>
                             </div>
                         </div>
+                        ${goalsHtml}
                     `;
                     groupGrid.appendChild(card);
-                });
-            });
+                }
+            }
         }
 
         async function loadStandings() {
