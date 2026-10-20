@@ -11,6 +11,10 @@
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
         :root {
             --bg-color: #070f26;
@@ -245,7 +249,7 @@
                 <img id="romaHeaderLogo2" src="https://a.espncdn.com/i/teamlogos/soccer/500/100.png" alt="AS Rom" class="w-12 h-12 object-contain drop-shadow">
             </div>
             <p class="text-slate-400 text-xs">Serie A — Saison 2026/27 (Live-Sync via ESPN API)</p>
-            <div class="flex items-center gap-3 mt-1">
+            <div class="flex items-center gap-3 mt-1 flex-wrap justify-center">
                 <span class="text-xs text-slate-400">⚡ Web-App & Management: Jürgen Schützendorf</span>
                 <div id="live-indicator" class="hidden items-center gap-2 bg-red-950 border border-red-700 text-red-400 px-3 py-1 rounded-full text-xs font-bold">
                     <span class="live-dot"></span> ⚡ ESPN Live-Ticker Aktiv
@@ -356,14 +360,13 @@
         <div class="section-box">
             <div class="section-header">
                 <span id="matchdayTableHeader">Spieltag — Spiele & Ergebnisse</span>
-                <div class="flex gap-2">
-                    <button class="header-action-btn" onclick="alert('Push-Alarm aktiv!')">🔔 Push-Alarm</button>
+                <div class="flex gap-2 flex-wrap">
                     <button onclick="refreshAllData()" class="header-action-btn">🔄 Aktualisieren</button>
                 </div>
             </div>
 
             <!-- Spieltags-Navigation -->
-            <div class="flex justify-between items-center bg-[#0b132b] border border-neutral-800 rounded-xl p-3 mb-4">
+            <div class="flex justify-between items-center bg-[#0b132b] border border-neutral-800 rounded-xl p-3 mb-4 flex-wrap gap-2">
                 <button onclick="changeMatchday(-1)" class="bg-[#0f172a] hover:bg-neutral-800 text-white border border-neutral-800 text-xs font-bold px-4 py-2 rounded-lg transition flex items-center gap-1">
                     ◀ Vorheriger
                 </button>
@@ -423,6 +426,13 @@
                 </table>
             </div>
 
+            <!-- UNTER DER TABELLE: DISkreter ADMIN TRIGGER -->
+            <div class="mt-4 pt-3 border-t border-neutral-800 flex justify-end">
+                <button onclick="openAdminModal()" class="bg-[#0b132b] hover:bg-neutral-800 border border-amber-500/40 text-amber-400 font-bold text-xs uppercase px-4 py-2 rounded-lg transition flex items-center gap-2">
+                    ⚙️ Admin-Bereich & Push-Test
+                </button>
+            </div>
+
             <div style="display: flex; gap: 15px; margin-top: 12px; font-size: 0.75rem; color: var(--text-muted); flex-wrap: wrap;">
                 <div style="display: flex; align-items: center; gap: 5px;"><span style="width: 10px; height: 10px; background: rgba(16, 185, 129, 0.6); border-radius: 2px;"></span> Champions League (1. - 4.)</div>
                 <div style="display: flex; align-items: center; gap: 5px;"><span style="width: 10px; height: 10px; background: rgba(59, 130, 246, 0.5); border-radius: 2px;"></span> Europa League (5. - 6.)</div>
@@ -430,6 +440,49 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- ADMIN MODAL -->
+    <div class="modal-overlay" id="adminModal">
+        <div class="modal-card" style="max-width: 550px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                <div style="font-weight: bold; font-size: 1.1rem; color: var(--accent-color);">⚙️ Admin-Bereich & Push-Testkonsole</div>
+                <button class="btn-danger" onclick="closeAdminModal()">✕</button>
+            </div>
+            <div class="modal-body custom-scroll">
+                <!-- Login Ansicht -->
+                <div id="adminLoginBox" class="space-y-3">
+                    <p class="text-xs text-slate-400">Bitte gib das Admin-Passwort ein, um den Bereich freizuschalten.</p>
+                    <div class="flex gap-2">
+                        <input type="password" id="adminPasswordInput" placeholder="Passwort..." class="flex-1 bg-[#0b132b] border border-neutral-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500" onkeydown="if(event.key==='Enter') verifyAdminPassword()">
+                        <button onclick="verifyAdminPassword()" class="bg-amber-600 hover:bg-amber-500 text-black font-bold text-xs uppercase px-4 py-2 rounded-lg transition">Anmelden</button>
+                    </div>
+                </div>
+
+                <!-- Admin Konsole (Nach erfolgreichem Login) -->
+                <div id="adminConsoleBox" class="hidden space-y-4">
+                    <div class="bg-[#0b132b] border border-neutral-800 p-3 rounded-xl">
+                        <div class="text-xs font-bold text-amber-400 uppercase mb-2">🔔 Push-Abo für dieses Gerät</div>
+                        <button onclick="togglePushNotifications()" class="w-full bg-amber-600 hover:bg-amber-500 text-black font-bold text-xs uppercase py-2.5 rounded-lg transition">
+                            Push-Benachrichtigungen aktivieren
+                        </button>
+                    </div>
+
+                    <div class="bg-[#0b132b] border border-neutral-800 p-3 rounded-xl">
+                        <div class="text-xs font-bold text-amber-400 uppercase mb-2">🚀 Test-Nachricht senden</div>
+                        <input type="text" id="adminPushMessage" value="⚽ AS Rom Test-Alarm: Tooor im Stadio Olimpico!" class="w-full bg-[#0f172a] border border-neutral-800 rounded-lg px-3 py-2 text-xs text-white mb-2 focus:outline-none focus:border-amber-500">
+                        <button onclick="sendAdminTestPush()" class="w-full bg-red-800 hover:bg-red-700 text-white font-bold text-xs uppercase py-2.5 rounded-lg transition">
+                            Test-Push abfeuern
+                        </button>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <button onclick="lockAdminSession()" class="text-xs text-slate-400 hover:text-white underline">Sitzung sperren</button>
+                    </div>
+                </div>
+            </div>
+            <button class="btn-modal-close" onclick="closeAdminModal()">Schließen</button>
+        </div>
     </div>
 
     <!-- TORSCHÜTZEN MODAL -->
@@ -490,6 +543,14 @@
 
     <!-- JAVASCRIPT LOGIK -->
     <script>
+        const SUPABASE_URL = 'https://lhusylpjnujlqomougmg.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxodXN5bHBqbnVqbHFvbW91Z21nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwMzA0ODIsImV4cCI6MjEwNDYwNjQ4Mn0.9ugazAA5pEdy9uSaJQWa5BMb7EwSH9d-h5K8ln_PF5A';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        const PUSH_TABLE_NAME = 'push_subscriptions_asrom';
+        const VAPID_PUBLIC_KEY = 'BAsnfWgySLti5LzulXfN-xI-x7UDV32LO98YXgg1qdoRY1E1Tl05QPgCvOMgfwe80cSv_K7336-dhJTgBkHUI70';
+        const ADMIN_PASSWORD = '1919';
+
         let currentMatchday = 7;
         let leagueMatches = {};
         let allStandingsEntries = [];
@@ -507,6 +568,26 @@
         function rotateHistoryFact() {
             currentFactIdx = (currentFactIdx + 1) % historyFacts.length;
             document.getElementById('history-fact').innerText = `"${historyFacts[currentFactIdx]}"`;
+        }
+
+        // Admin Modal Steuerung
+        function openAdminModal() { document.getElementById('adminModal').style.display = 'flex'; }
+        function closeAdminModal() { document.getElementById('adminModal').style.display = 'none'; }
+
+        function verifyAdminPassword() {
+            const inputVal = document.getElementById('adminPasswordInput').value;
+            if (inputVal === ADMIN_PASSWORD) {
+                document.getElementById('adminLoginBox').classList.add('hidden');
+                document.getElementById('adminConsoleBox').classList.remove('hidden');
+                document.getElementById('adminPasswordInput').value = '';
+            } else {
+                alert('Falsches Admin-Passwort!');
+            }
+        }
+
+        function lockAdminSession() {
+            document.getElementById('adminConsoleBox').classList.add('hidden');
+            document.getElementById('adminLoginBox').classList.remove('hidden');
         }
 
         const matchdayDefinitions = {
@@ -549,6 +630,88 @@
             37: { label: "37. Spieltag (23.05.)", dates: ['20270523'] },
             38: { label: "38. Spieltag (30.05.)", dates: ['20270530'] }
         };
+
+        // Service Worker & Push Registrierung
+        async function registerServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                try {
+                    await navigator.serviceWorker.register('sw.js');
+                } catch (error) {
+                    console.error('Service Worker Registrierung fehlgeschlagen:', error);
+                }
+            }
+        }
+
+        async function togglePushNotifications() {
+            if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+                alert('Push-Benachrichtigungen werden von diesem Browser nicht unterstützt.');
+                return;
+            }
+
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                alert('Berechtigung für Benachrichtigungen wurde verweigert.');
+                return;
+            }
+
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                let subscription = await registration.pushManager.getSubscription();
+
+                if (!subscription) {
+                    const convertedKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+                    subscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: convertedKey
+                    });
+                }
+
+                const { error } = await supabaseClient
+                    .from(PUSH_TABLE_NAME)
+                    .upsert([{ subscription: JSON.stringify(subscription), updated_at: new Date() }], { onConflict: 'subscription' });
+
+                if (error) throw error;
+                alert('🔔 Push-Alarm für AS Rom erfolgreich abonniert!');
+            } catch (error) {
+                console.error('Fehler bei der Push-Registrierung:', error);
+                alert('Fehler beim Aktivieren der Push-Benachrichtigungen.');
+            }
+        }
+
+        async function sendAdminTestPush() {
+            const msgText = document.getElementById('adminPushMessage').value;
+            if (!msgText) {
+                alert('Bitte gib einen Nachrichtentext ein.');
+                return;
+            }
+
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                if (registration && registration.active) {
+                    await registration.showNotification("AS Rom Admin-Test", {
+                        body: msgText,
+                        icon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%238e1616%22/><text x=%2250%22 y=%2270%22 font-size=%2260%22 text-anchor=%22middle%22>⚽</text></svg>'
+                    });
+                    alert('🚀 Test-Push erfolgreich lokal ausgelöst!');
+                } else {
+                    alert('Service Worker ist noch nicht bereit.');
+                }
+            } catch (err) {
+                console.error('Fehler beim Test-Push:', err);
+                alert('Fehler beim Auslösen des Test-Push.');
+            }
+        }
+
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
 
         function determineCurrentMatchday() {
             let today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -1127,11 +1290,13 @@
         window.onclick = function(e) {
             if (e.target === document.getElementById('scorersModal')) closeScorersModal();
             if (e.target === document.getElementById('romaMatchesModal')) closeRomaMatchesModal();
+            if (e.target === document.getElementById('adminModal')) closeAdminModal();
         }
 
         document.addEventListener("DOMContentLoaded", async () => {
             currentMatchday = determineCurrentMatchday();
             initDropdown();
+            await registerServiceWorker();
             await loadStandings();
             await loadAllMatchdays();
         });
