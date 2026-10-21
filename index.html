@@ -426,7 +426,7 @@
                 </table>
             </div>
 
-            <!-- UNTER DER TABELLE: DISkreter ADMIN TRIGGER -->
+            <!-- UNTER DER TABELLE: DISKRETER ADMIN TRIGGER -->
             <div class="mt-4 pt-3 border-t border-neutral-800 flex justify-end">
                 <button onclick="openAdminModal()" class="bg-[#0b132b] hover:bg-neutral-800 border border-amber-500/40 text-amber-400 font-bold text-xs uppercase px-4 py-2 rounded-lg transition flex items-center gap-2">
                     ⚙️ Admin-Bereich & Push-Test
@@ -462,7 +462,7 @@
                 <!-- Admin Konsole (Nach erfolgreichem Login) -->
                 <div id="adminConsoleBox" class="hidden space-y-4">
                     <div class="bg-[#0b132b] border border-neutral-800 p-3 rounded-xl">
-                        <div class="text-xs font-bold text-amber-400 uppercase mb-2">🔔 Push-Abo für dieses Gerät</div>
+                        <div class="text-xs font-bold text-amber-400 uppercase mb-2">🔔 Push-Abo für dieses Gerät (Tabelle: push_subscriptions_asrom)</div>
                         <button onclick="togglePushNotifications()" class="w-full bg-amber-600 hover:bg-amber-500 text-black font-bold text-xs uppercase py-2.5 rounded-lg transition">
                             Push-Benachrichtigungen aktivieren
                         </button>
@@ -555,6 +555,7 @@
         let leagueMatches = {};
         let allStandingsEntries = [];
         let autoRefreshTimer = null;
+        let previousScoresState = {};
 
         const historyFacts = [
             "Der AS Rom wurde am 7. Juli 1927 durch den Zusammenschluss von drei römischen Vereinen gegründet.",
@@ -702,6 +703,18 @@
             }
         }
 
+        async function triggerLiveGoalNotification(text) {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                const registration = await navigator.serviceWorker.ready;
+                if (registration) {
+                    registration.showNotification("⚽ LIVE-ALARM: AS Rom", {
+                        body: text,
+                        icon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%238e1616%22/><text x=%2250%22 y=%2270%22 font-size=%2260%22 text-anchor=%22middle%22>⚽</text></svg>'
+                    });
+                }
+            }
+        }
+
         function urlBase64ToUint8Array(base64String) {
             const padding = '='.repeat((4 - base64String.length % 4) % 4);
             const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
@@ -811,33 +824,39 @@
                                 let timeStr = !isNaN(matchDateObj.getTime()) ? matchDateObj.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : "15:00";
 
                                 let goals = [];
+                                let cards = [];
                                 let runningHome = 0;
                                 let runningAway = 0;
 
                                 if (comp.details && Array.isArray(comp.details)) {
                                     comp.details.sort((a, b) => (parseInt(a.clock?.secs || 0) - parseInt(b.clock?.secs || 0)));
                                     comp.details.forEach(detail => {
-                                        if (detail.type?.text === "Goal" || detail.scoringPlay || detail.goalValue > 0) {
-                                            let playerName = detail.scorer?.athlete?.displayName 
-                                                || detail.athlete?.displayName 
-                                                || (detail.athletesInvolved && detail.athletesInvolved[0]?.displayName)
-                                                || "";
-                                            if (!playerName && detail.text) {
-                                                let cleanText = detail.text.replace(/scored.*\$/, '').trim();
-                                                if (cleanText && cleanText.toLowerCase() !== 'goal') playerName = cleanText;
-                                            }
+                                        const textType = (detail.type?.text || "").toLowerCase();
+                                        const isGoal = textType.includes('goal') || detail.scoringPlay || detail.goalValue > 0;
+                                        const isYellow = textType.includes('yellow') || detail.yellowCard;
+                                        const isRed = textType.includes('red') || detail.redCard;
 
-                                            const scoringTeamId = detail.team?.id;
-                                            const isHomeGoal = (scoringTeamId === homeComp.team.id);
-                                            const isAwayGoal = (scoringTeamId === awayComp.team.id);
+                                        let playerName = detail.scorer?.athlete?.displayName 
+                                            || detail.athlete?.displayName 
+                                            || (detail.athletesInvolved && detail.athletesInvolved[0]?.displayName)
+                                            || "";
 
-                                            if (isHomeGoal) runningHome++;
-                                            if (isAwayGoal) runningAway++;
+                                        if (!playerName && detail.text) {
+                                            let cleanText = detail.text.replace(/scored.*$/, '').trim();
+                                            if (cleanText && cleanText.toLowerCase() !== 'goal') playerName = cleanText;
+                                        }
 
-                                            if (!playerName) playerName = isHomeGoal ? homeComp.team.displayName : awayComp.team.displayName;
+                                        const scoringTeamId = detail.team?.id;
+                                        const isHomeTeam = (scoringTeamId === homeComp.team.id);
 
-                                            let teamName = isHomeGoal ? homeComp.team.displayName : awayComp.team.displayName;
-                                            let teamLogo = detail.team?.logo || (isHomeGoal ? homeComp.team.logo : awayComp.team.logo);
+                                        if (isGoal) {
+                                            if (isHomeTeam) runningHome++;
+                                            else runningAway++;
+
+                                            if (!playerName) playerName = isHomeTeam ? homeComp.team.displayName : awayComp.team.displayName;
+
+                                            let teamName = isHomeTeam ? homeComp.team.displayName : awayComp.team.displayName;
+                                            let teamLogo = detail.team?.logo || (isHomeTeam ? homeComp.team.logo : awayComp.team.logo);
                                             let clock = detail.clock?.displayValue || "";
                                             if (clock && !clock.endsWith("'")) clock += "'";
 
@@ -851,10 +870,47 @@
                                                 team: teamName,
                                                 logo: teamLogo,
                                                 minute: clock,
-                                                isHome: isHomeGoal
+                                                isHome: isHomeTeam
+                                            });
+                                        } else if (isYellow || isRed) {
+                                            if (!playerName) playerName = isHomeTeam ? homeComp.team.displayName : awayComp.team.displayName;
+                                            let clock = detail.clock?.displayValue || "";
+                                            if (clock && !clock.endsWith("'")) clock += "'";
+
+                                            let cardIcon = '🟨';
+                                            if (textType.includes('second') || textType.includes('yellow-red') || detail.secondYellow) {
+                                                cardIcon = '🟨🟥';
+                                            } else if (isRed) {
+                                                cardIcon = '🟥';
+                                            }
+
+                                            cards.push({
+                                                playerName: playerName,
+                                                minute: clock,
+                                                cardIcon: cardIcon,
+                                                isHome: isHomeTeam
                                             });
                                         }
                                     });
+                                }
+
+                                const currentHomeScore = homeComp.score !== undefined && statusType !== 'pre' ? parseInt(homeComp.score) : null;
+                                const currentAwayScore = awayComp.score !== undefined && statusType !== 'pre' ? parseInt(awayComp.score) : null;
+
+                                // Auto Live Goal Notification Check for AS Roma
+                                let matchKey = `${ev.id}`;
+                                let prev = previousScoresState[matchKey];
+                                if (prev && isLive && currentHomeScore !== null && currentAwayScore !== null) {
+                                    let romaIsHome = homeComp.team.displayName.toLowerCase().includes('roma');
+                                    let romaIsAway = awayComp.team.displayName.toLowerCase().includes('roma');
+                                    if (romaIsHome && currentHomeScore > prev.homeScore) {
+                                        triggerLiveGoalNotification(`Tooor für die Roma! ${homeComp.team.displayName} ${currentHomeScore}:${currentAwayScore} ${awayComp.team.displayName}`);
+                                    } else if (romaIsAway && currentAwayScore > prev.awayScore) {
+                                        triggerLiveGoalNotification(`Tooor für die Roma! ${homeComp.team.displayName} ${currentHomeScore}:${currentAwayScore} ${awayComp.team.displayName}`);
+                                    }
+                                }
+                                if (currentHomeScore !== null && currentAwayScore !== null) {
+                                    previousScoresState[matchKey] = { homeScore: currentHomeScore, awayScore: currentAwayScore };
                                 }
 
                                 matches.push({
@@ -864,12 +920,13 @@
                                     awayLogo: awayComp.team.logo || '',
                                     date: dateStr,
                                     time: timeStr,
-                                    homeScore: homeComp.score !== undefined && statusType !== 'pre' ? parseInt(homeComp.score) : null,
-                                    awayScore: awayComp.score !== undefined && statusType !== 'pre' ? parseInt(awayComp.score) : null,
+                                    homeScore: currentHomeScore,
+                                    awayScore: currentAwayScore,
                                     isFinished: statusType === 'post',
                                     isLive: isLive,
                                     dateTime: ev.date,
-                                    goals: goals
+                                    goals: goals,
+                                    cards: cards
                                 });
                             });
 
@@ -938,14 +995,24 @@
                 let scoreDisplay = hasResult ? `${homeScoreStr}:${awayScoreStr}` : '<span style="color: var(--text-muted); font-weight: normal; font-size: 1rem;">vs</span>';
                 let isRomaMatch = m.home.toLowerCase().includes('roma') || m.away.toLowerCase().includes('roma');
 
-                let homeGoalsHtml = '';
-                let awayGoalsHtml = '';
-                if (m.goals && m.goals.length > 0) {
-                    let homeItems = m.goals.filter(g => g.isHome).map(g => `<div style="font-size: 0.85rem; color: #d97706; margin-top: 3px; text-align: right;">⚽ [${g.text.split(']')[0].replace('[','')}] ${g.playerName} (${g.minute})</div>`).join('');
-                    let awayItems = m.goals.filter(g => !g.isHome).map(g => `<div style="font-size: 0.85rem; color: #d97706; margin-top: 3px; text-align: left;">[${g.text.split(']')[0].replace('[','')}] ${g.playerName} (${g.minute}) ⚽</div>`).join('');
-                    if (homeItems) homeGoalsHtml = `<div style="margin-top: 6px;">${homeItems}</div>`;
-                    if (awayItems) awayGoalsHtml = `<div style="margin-top: 6px;">${awayItems}</div>`;
-                }
+                let homeEventsHtml = '';
+                let awayEventsHtml = '';
+
+                let homeGoals = m.goals ? m.goals.filter(g => g.isHome) : [];
+                let homeCards = m.cards ? m.cards.filter(c => c.isHome) : [];
+                let awayGoals = m.goals ? m.goals.filter(g => !g.isHome) : [];
+                let awayCards = m.cards ? m.cards.filter(c => !c.isHome) : [];
+
+                let homeItems = [];
+                homeGoals.forEach(g => homeItems.push(`<div style="font-size: 0.82rem; color: #d97706; margin-top: 3px; text-align: right;">⚽ [${g.text.split(']')[0].replace('[','')}] ${g.playerName} (${g.minute})</div>`));
+                homeCards.forEach(c => homeItems.push(`<div style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px; text-align: right;">${c.cardIcon} ${c.playerName} (${c.minute})</div>`));
+
+                let awayItems = [];
+                awayGoals.forEach(g => awayItems.push(`<div style="font-size: 0.82rem; color: #d97706; margin-top: 3px; text-align: left;">[${g.text.split(']')[0].replace('[','')}] ${g.playerName} (${g.minute}) ⚽</div>`));
+                awayCards.forEach(c => awayItems.push(`<div style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px; text-align: left;">${c.cardIcon} ${c.playerName} (${c.minute})</div>`));
+
+                if (homeItems.length > 0) homeEventsHtml = `<div style="margin-top: 6px;">${homeItems.join('')}</div>`;
+                if (awayItems.length > 0) awayEventsHtml = `<div style="margin-top: 6px;">${awayItems.join('')}</div>`;
 
                 let tr = document.createElement('tr');
                 if (isRomaMatch) tr.style.background = 'rgba(217, 119, 6, 0.1)';
@@ -960,7 +1027,7 @@
                             <span style="color: ${m.home.toLowerCase().includes('roma') ? '#d97706' : '#fff'};">${m.home}</span>
                             <img src="${m.homeLogo}" class="team-mini-logo" alt="Logo">
                         </div>
-                        ${homeGoalsHtml}
+                        ${homeEventsHtml}
                     </td>
                     <td style="text-align: center;">
                         <div style="font-weight: 900; font-size: 1.25rem; color: #fff;">${scoreDisplay}</div>
@@ -971,7 +1038,7 @@
                             <img src="${m.awayLogo}" class="team-mini-logo" alt="Logo">
                             <span style="color: ${m.away.toLowerCase().includes('roma') ? '#d97706' : '#fff'};">${m.away}</span>
                         </div>
-                        ${awayGoalsHtml}
+                        ${awayEventsHtml}
                     </td>
                 `;
                 tbody.appendChild(tr);
