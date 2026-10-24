@@ -509,7 +509,7 @@
 
                     <div class="bg-[#0b132b] border border-neutral-800 p-3 rounded-xl">
                         <div class="text-xs font-bold text-amber-400 uppercase mb-2">🚀 Test-Nachricht senden</div>
-                        <input type="text" id="adminPushMessage" value="⚽ AS Rom Test-Alarm: Tooor im Stadio Olimpico!" class="w-full bg-[#0f172a] border border-neutral-800 rounded-lg px-3 py-2 text-xs text-white mb-2 focus:outline-none focus:border-amber-500">
+                        <input type="text" id="adminPushMessage" value="⚽ Serie A Test-Alarm: Tooor im Stadion!" class="w-full bg-[#0f172a] border border-neutral-800 rounded-lg px-3 py-2 text-xs text-white mb-2 focus:outline-none focus:border-amber-500">
                         <button onclick="sendAdminTestPush()" class="w-full bg-red-800 hover:bg-red-700 text-white font-bold text-xs uppercase py-2.5 rounded-lg transition">
                             Test-Push abfeuern
                         </button>
@@ -712,7 +712,7 @@
                     .upsert([{ subscription: JSON.stringify(subscription), updated_at: new Date() }], { onConflict: 'subscription' });
 
                 if (error) throw error;
-                alert('🔔 Push-Alarm für AS Rom erfolgreich abonniert!');
+                alert('🔔 Push-Alarm erfolgreich abonniert!');
             } catch (error) {
                 console.error('Fehler bei der Push-Registrierung:', error);
                 alert('Fehler beim Aktivieren der Push-Benachrichtigungen.');
@@ -729,7 +729,7 @@
             try {
                 const registration = await navigator.serviceWorker.ready;
                 if (registration && registration.active) {
-                    await registration.showNotification("AS Rom Admin-Test", {
+                    await registration.showNotification("Serie A Admin-Test", {
                         body: msgText,
                         icon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%238e1616%22/><text x=%2250%22 y=%2270%22 font-size=%2260%22 text-anchor=%22middle%22>⚽</text></svg>'
                     });
@@ -757,13 +757,13 @@
                     .from(SENT_GOALS_TABLE)
                     .upsert([{ match_id: matchId, home_score: homeScore, away_score: awayScore }]);
             } catch (e) {
-                console.log("Hinweis zu sent_goals_asrom Tabelle:", e);
+                console.log("Hinweis zur sent_goals Tabelle:", e);
             }
 
             if ('Notification' in window && Notification.permission === 'granted') {
                 const registration = await navigator.serviceWorker.ready;
                 if (registration) {
-                    registration.showNotification("⚽ LIVE-ALARM: AS Rom", {
+                    registration.showNotification("⚽ LIVE-ALARM: Serie A", {
                         body: text,
                         icon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2222%22 fill=%22%238e1616%22/><text x=%2250%22 y=%2270%22 font-size=%2260%22 text-anchor=%22middle%22>⚽</text></svg>'
                     });
@@ -953,15 +953,14 @@
                                 const currentHomeScore = homeComp.score !== undefined && statusType !== 'pre' ? parseInt(homeComp.score) : null;
                                 const currentAwayScore = awayComp.score !== undefined && statusType !== 'pre' ? parseInt(awayComp.score) : null;
 
+                                // PUSH-BENACHRICHTIGUNG FÜR ALLE LIVE-BEGEGNUNGEN AKTIVIERT
                                 let matchKey = `${ev.id}`;
                                 let prev = previousScoresState[matchKey];
                                 if (prev && isLive && currentHomeScore !== null && currentAwayScore !== null) {
-                                    let romaIsHome = homeComp.team.displayName.toLowerCase().includes('roma');
-                                    let romaIsAway = awayComp.team.displayName.toLowerCase().includes('roma');
-                                    if (romaIsHome && currentHomeScore > prev.homeScore) {
-                                        triggerLiveGoalNotification(matchKey, `Tooor für die Roma! ${homeComp.team.displayName} ${currentHomeScore}:${currentAwayScore} ${awayComp.team.displayName}`, currentHomeScore, currentAwayScore);
-                                    } else if (romaIsAway && currentAwayScore > prev.awayScore) {
-                                        triggerLiveGoalNotification(matchKey, `Tooor für die Roma! ${homeComp.team.displayName} ${currentHomeScore}:${currentAwayScore} ${awayComp.team.displayName}`, currentHomeScore, currentAwayScore);
+                                    if (currentHomeScore > prev.homeScore) {
+                                        triggerLiveGoalNotification(`${matchKey}_home`, `⚽ TOOR! ${homeComp.team.displayName} ${currentHomeScore}:${currentAwayScore} ${awayComp.team.displayName}`, currentHomeScore, currentAwayScore);
+                                    } else if (currentAwayScore > prev.awayScore) {
+                                        triggerLiveGoalNotification(`${matchKey}_away`, `⚽ TOOR! ${homeComp.team.displayName} ${currentHomeScore}:${currentAwayScore} ${awayComp.team.displayName}`, currentHomeScore, currentAwayScore);
                                     }
                                 }
                                 if (currentHomeScore !== null && currentAwayScore !== null) {
@@ -1035,7 +1034,6 @@
             }
 
             let htmlItems = '';
-            // Doppeltes Array für nahtlose Endlos-Animation
             let loopMatches = [...matches, ...matches];
 
             loopMatches.forEach(m => {
