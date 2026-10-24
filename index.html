@@ -51,6 +51,38 @@
             display: inline-block;
         }
 
+        /* Laufband Animation */
+        @keyframes ticker {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-50%, 0, 0); }
+        }
+        .ticker-wrap {
+            width: 100%;
+            overflow: hidden;
+            background: #0b132b;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 10px 0;
+            white-space: nowrap;
+            margin-bottom: 24px;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.5);
+        }
+        .ticker-move {
+            display: inline-block;
+            animation: ticker 35s linear infinite;
+        }
+        .ticker-move:hover {
+            animation-play-state: paused;
+        }
+        .ticker-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 25px;
+            font-size: 0.85rem;
+            border-right: 1px solid var(--border-color);
+        }
+
         .section-box {
             background: var(--card-bg);
             border: 1px solid var(--border-color);
@@ -240,7 +272,7 @@
     <div class="w-full max-w-[950px]">
         
         <!-- HEADER MIT WAPPEN -->
-        <div class="flex flex-col items-center border-b border-neutral-800 pb-5 mb-6 text-center gap-2">
+        <div class="flex flex-col items-center border-b border-neutral-800 pb-5 mb-5 text-center gap-2">
             <div class="flex items-center gap-3">
                 <img id="romaHeaderLogo" src="https://a.espncdn.com/i/teamlogos/soccer/500/100.png" alt="AS Rom" class="w-12 h-12 object-contain drop-shadow">
                 <h1 class="text-2xl md:text-3xl font-black tracking-wide flex items-center gap-2 text-white">
@@ -254,6 +286,13 @@
                 <div id="live-indicator" class="hidden items-center gap-2 bg-red-950 border border-red-700 text-red-400 px-3 py-1 rounded-full text-xs font-bold">
                     <span class="live-dot"></span> ⚡ ESPN Live-Ticker Aktiv
                 </div>
+            </div>
+        </div>
+
+        <!-- LIVE-SPIELTAGS-LAUFBAND -->
+        <div class="ticker-wrap">
+            <div class="ticker-move" id="ticker-content">
+                <span class="ticker-item text-slate-400">Lade Live-Ticker der Serie A...</span>
             </div>
         </div>
 
@@ -548,6 +587,7 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         const PUSH_TABLE_NAME = 'push_subscriptions_asrom';
+        const SENT_GOALS_TABLE = 'sent_goals_asrom';
         const VAPID_PUBLIC_KEY = 'BAsnfWgySLti5LzulXfN-xI-x7UDV32LO98YXgg1qdoRY1E1Tl05QPgCvOMgfwe80cSv_K7336-dhJTgBkHUI70';
         const ADMIN_PASSWORD = '1919';
 
@@ -703,7 +743,23 @@
             }
         }
 
-        async function triggerLiveGoalNotification(text) {
+        async function triggerLiveGoalNotification(matchId, text, homeScore, awayScore) {
+            try {
+                const { data } = await supabaseClient
+                    .from(SENT_GOALS_TABLE)
+                    .select('match_id')
+                    .eq('match_id', matchId)
+                    .single();
+
+                if (data) return;
+
+                await supabaseClient
+                    .from(SENT_GOALS_TABLE)
+                    .upsert([{ match_id: matchId, home_score: homeScore, away_score: awayScore }]);
+            } catch (e) {
+                console.log("Hinweis zu sent_goals_asrom Tabelle:", e);
+            }
+
             if ('Notification' in window && Notification.permission === 'granted') {
                 const registration = await navigator.serviceWorker.ready;
                 if (registration) {
@@ -897,16 +953,15 @@
                                 const currentHomeScore = homeComp.score !== undefined && statusType !== 'pre' ? parseInt(homeComp.score) : null;
                                 const currentAwayScore = awayComp.score !== undefined && statusType !== 'pre' ? parseInt(awayComp.score) : null;
 
-                                // Auto Live Goal Notification Check for AS Roma
                                 let matchKey = `${ev.id}`;
                                 let prev = previousScoresState[matchKey];
                                 if (prev && isLive && currentHomeScore !== null && currentAwayScore !== null) {
                                     let romaIsHome = homeComp.team.displayName.toLowerCase().includes('roma');
                                     let romaIsAway = awayComp.team.displayName.toLowerCase().includes('roma');
                                     if (romaIsHome && currentHomeScore > prev.homeScore) {
-                                        triggerLiveGoalNotification(`Tooor für die Roma! ${homeComp.team.displayName} ${currentHomeScore}:${currentAwayScore} ${awayComp.team.displayName}`);
+                                        triggerLiveGoalNotification(matchKey, `Tooor für die Roma! ${homeComp.team.displayName} ${currentHomeScore}:${currentAwayScore} ${awayComp.team.displayName}`, currentHomeScore, currentAwayScore);
                                     } else if (romaIsAway && currentAwayScore > prev.awayScore) {
-                                        triggerLiveGoalNotification(`Tooor für die Roma! ${homeComp.team.displayName} ${currentHomeScore}:${currentAwayScore} ${awayComp.team.displayName}`);
+                                        triggerLiveGoalNotification(matchKey, `Tooor für die Roma! ${homeComp.team.displayName} ${currentHomeScore}:${currentAwayScore} ${awayComp.team.displayName}`, currentHomeScore, currentAwayScore);
                                     }
                                 }
                                 if (currentHomeScore !== null && currentAwayScore !== null) {
@@ -964,9 +1019,45 @@
                 liveIndicator.classList.remove('flex');
             }
 
+            updateTicker(currentMatchday);
             updateRomaDashboard();
             updateTop3ScorersWidget();
             loadGamesForMatchday(currentMatchday);
+        }
+
+        function updateTicker(mw) {
+            let tickerContainer = document.getElementById('ticker-content');
+            let matches = leagueMatches[mw] || [];
+            
+            if (matches.length === 0) {
+                tickerContainer.innerHTML = `<span class="ticker-item text-slate-400">Keine Live-Ticker Daten für den aktuellen Spieltag verfügbar</span>`;
+                return;
+            }
+
+            let htmlItems = '';
+            // Doppeltes Array für nahtlose Endlos-Animation
+            let loopMatches = [...matches, ...matches];
+
+            loopMatches.forEach(m => {
+                let hasResult = m.homeScore !== null && m.awayScore !== null;
+                let scoreText = hasResult ? `${m.homeScore}:${m.awayScore}` : m.time;
+                let statusStyle = m.isLive ? 'color: #f87171; font-weight: bold;' : 'color: #fff;';
+                let isRoma = m.home.toLowerCase().includes('roma') || m.away.toLowerCase().includes('roma');
+                let highlightStyle = isRoma ? 'border-left: 3px solid var(--accent-color); padding-left: 10px;' : '';
+
+                htmlItems += `
+                    <div class="ticker-item" style="${highlightStyle}">
+                        <img src="${m.homeLogo}" class="team-mini-logo" alt="">
+                        <span style="${m.home.toLowerCase().includes('roma') ? 'color: var(--accent-color); font-weight:bold;' : 'color:#cbd5e1;'}">${m.home}</span>
+                        <span style="font-weight:900; ${statusStyle}">${scoreText}</span>
+                        <span style="${m.away.toLowerCase().includes('roma') ? 'color: var(--accent-color); font-weight:bold;' : 'color:#cbd5e1;'}">${m.away}</span>
+                        <img src="${m.awayLogo}" class="team-mini-logo" alt="">
+                        ${m.isLive ? '<span class="live-dot ml-1"></span>' : ''}
+                    </div>
+                `;
+            });
+
+            tickerContainer.innerHTML = htmlItems;
         }
 
         function loadGamesForMatchday(mw) {
@@ -979,6 +1070,8 @@
                 tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">Keine Spiele für diesen Spieltag gefunden.</td></tr>`;
                 return;
             }
+
+            updateTicker(mw);
 
             matches.forEach(m => {
                 let hasResult = m.homeScore !== null && m.awayScore !== null;
