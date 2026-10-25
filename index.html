@@ -751,29 +751,22 @@
             }
         }
 
-        // KORRIGIERTE TOR-PUSH FUNKTION (NUTZT JETZT DIE EDGE FUNCTION ÜBER SENT_GOALS_ASROM)
+        // KORRIGIERTE TOR-PUSH FUNKTION MIT EXPLIZITEM UPSERT-ZIEL
         async function triggerLiveGoalNotification(matchId, text, homeScore, awayScore) {
             try {
-                // 1. Prüfen ob Tor bereits in sent_goals_asrom existiert
-                const { data: existing } = await supabaseClient
+                const { error: upsertError } = await supabaseClient
                     .from(SENT_GOALS_TABLE)
-                    .select('match_id')
-                    .eq('match_id', matchId)
-                    .maybeSingle();
+                    .upsert([{ 
+                        match_id: matchId, 
+                        home_score: homeScore, 
+                        away_score: awayScore 
+                    }], { onConflict: 'match_id' });
 
-                if (existing) return;
-
-                // 2. In sent_goals_asrom eintragen
-                const { error: insertError } = await supabaseClient
-                    .from(SENT_GOALS_TABLE)
-                    .upsert([{ match_id: matchId, home_score: homeScore, away_score: awayScore }]);
-
-                if (insertError) {
-                    console.error("Fehler beim Speichern in sent_goals_asrom:", insertError);
+                if (upsertError) {
+                    console.error("Fehler beim Speichern in sent_goals_asrom:", upsertError);
                     return;
                 }
 
-                // 3. Zentrale Edge Function für echten Hintergrund-Push aufrufen
                 await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
                     method: 'POST',
                     mode: 'cors',
