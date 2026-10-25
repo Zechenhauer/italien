@@ -603,7 +603,6 @@
         let leagueMatches = {};
         let allStandingsEntries = [];
         let autoRefreshTimer = null;
-        let previousScoresState = {};
 
         const historyFacts = [
             "Der AS Rom wurde am 7. Juli 1927 durch den Zusammenschluss von drei römischen Vereinen gegründet.",
@@ -759,12 +758,11 @@
             }
         }
 
-        // --- OPTIMIERTE LIVE-TOR-PUSH-LOGIK OHNE URL-ENCODING-PROBLEME ---
+        // --- OPTIMIERTE LIVE-TOR-PUSH-LOGIK MIT DIREKTEM DB-ABGLEICH ---
         async function triggerLiveGoalPush(matchId, home, away, homeScore, awayScore, goalText) {
             try {
                 const uniqueGoalId = `${matchId}_${homeScore}:${awayScore}_${goalText}`;
 
-                // Direkt versuchen einzufügen (nutzt den Primärschlüssel als sauberen Duplikat-Schutz)
                 let { error: insertError } = await supabaseClient
                     .from(SENT_GOALS_TABLE)
                     .insert([
@@ -777,7 +775,6 @@
                     ]);
 
                 if (!insertError) {
-                    // Push über Edge Function auslösen
                     await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
                         method: 'POST',
                         mode: 'cors',
@@ -789,14 +786,10 @@
                         })
                     });
                     console.log("Roma Tor-Push erfolgreich gesendet und in DB gespeichert!");
-                    alert("Tor-Push erfolgreich ausgelöst und Push versendet!");
                 } else if (insertError.code === '23505') {
-                    // Code 23505 = Unique Violation (Eintrag existiert bereits in der DB)
                     console.log("Dieses Tor existiert bereits in der Datenbank (Duplikat-Schutz).");
-                    alert("Dieses Tor wurde in der Datenbank bereits registriert.");
                 } else {
                     console.error("Insert-Fehler in sent_goals_asrom:", insertError);
-                    alert("Fehler beim Speichern: " + insertError.message);
                 }
             } catch (e) {
                 console.error("Fehler beim automatischen Live-Push:", e);
@@ -985,15 +978,10 @@
                                 const currentHomeScore = homeComp.score !== undefined && statusType !== 'pre' ? parseInt(homeComp.score) : null;
                                 const currentAwayScore = awayComp.score !== undefined && statusType !== 'pre' ? parseInt(awayComp.score) : null;
 
-                                let matchKey = `${ev.id}`;
-                                let prev = previousScoresState[matchKey];
-                                if (prev && isLive && currentHomeScore !== null && currentAwayScore !== null) {
-                                    if (currentHomeScore > prev.homeScore || currentAwayScore > prev.awayScore) {
-                                        triggerLiveGoalPush(matchKey, homeComp.team.displayName, awayComp.team.displayName, currentHomeScore, currentAwayScore, latestScorerText || "Tor!");
-                                    }
-                                }
-                                if (currentHomeScore !== null && currentAwayScore !== null) {
-                                    previousScoresState[matchKey] = { homeScore: currentHomeScore, awayScore: currentAwayScore };
+                                // ULTRA-ROBUSTER LIVE-TOR CHECK (Prüft direkt gegen die Datenbank, ob das Tor neu ist)
+                                if (isLive && currentHomeScore !== null && currentAwayScore !== null && (currentHomeScore > 0 || currentAwayScore > 0)) {
+                                    let matchKey = `ita_${ev.id}`;
+                                    triggerLiveGoalPush(matchKey, homeComp.team.displayName, awayComp.team.displayName, currentHomeScore, currentAwayScore, latestScorerText || "Tor!");
                                 }
 
                                 matches.push({
