@@ -759,51 +759,44 @@
             }
         }
 
-        // --- KORRIGIERTE & ROBUSTE LIVE-TOR-PUSH-LOGIK ---
+        // --- OPTIMIERTE LIVE-TOR-PUSH-LOGIK OHNE URL-ENCODING-PROBLEME ---
         async function triggerLiveGoalPush(matchId, home, away, homeScore, awayScore, goalText) {
             try {
                 const uniqueGoalId = `${matchId}_${homeScore}:${awayScore}_${goalText}`;
 
-                // 1. Prüfen, ob das Tor bereits in sent_goals_asrom existiert
-                let { data: existing, error: checkError } = await supabaseClient
+                // Direkt versuchen einzufügen (nutzt den Primärschlüssel als sauberen Duplikat-Schutz)
+                let { error: insertError } = await supabaseClient
                     .from(SENT_GOALS_TABLE)
-                    .select('goal_id')
-                    .eq('goal_id', uniqueGoalId)
-                    .maybeSingle();
+                    .insert([
+                        { 
+                            goal_id: uniqueGoalId,
+                            match_id: matchId,
+                            home_score: homeScore,
+                            away_score: awayScore
+                        }
+                    ]);
 
-                if (!existing && !checkError) {
-                    // 2. Ohne restriktive Fehler sauber mit allen Spalten einfügen
-                    let { error: insertError } = await supabaseClient
-                        .from(SENT_GOALS_TABLE)
-                        .insert([
-                            { 
-                                goal_id: uniqueGoalId,
-                                match_id: matchId,
-                                home_score: homeScore,
-                                away_score: awayScore
-                            }
-                        ]);
-
-                    if (!insertError) {
-                        // 3. Push über Edge Function auslösen
-                        await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
-                            method: 'POST',
-                            mode: 'cors',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                table: PUSH_TABLE_NAME,
-                                title: `⚽ TOR! (${homeScore}:${awayScore})`,
-                                body: `${home} vs ${away}\nTorschütze: ${goalText}`
-                            })
-                        });
-                        console.log("Roma Tor-Push erfolgreich gesendet und in DB gespeichert!");
-                        alert("Tor-Push Simulation erfolgreich ausgeführt!");
-                    } else {
-                        console.error("Insert-Fehler in sent_goals_asrom:", insertError);
-                    }
+                if (!insertError) {
+                    // Push über Edge Function auslösen
+                    await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
+                        method: 'POST',
+                        mode: 'cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            table: PUSH_TABLE_NAME,
+                            title: `⚽ TOR! (${homeScore}:${awayScore})`,
+                            body: `${home} vs ${away}\nTorschütze: ${goalText}`
+                        })
+                    });
+                    console.log("Roma Tor-Push erfolgreich gesendet und in DB gespeichert!");
+                    alert("Tor-Push erfolgreich ausgelöst und Push versendet!");
+                } else if (insertError.code === '23505') {
+                    // Code 23505 = Unique Violation (Eintrag existiert bereits in der DB)
+                    console.log("Dieses Tor existiert bereits in der Datenbank (Duplikat-Schutz).");
+                    alert("Dieses Tor wurde in der Datenbank bereits registriert.");
                 } else {
-                    console.log("Tor wurde bereits in dieser Session gemeldet.");
-                    alert("Dieses Tor wurde in dieser Session bereits gemeldet (Duplikat-Schutz aktiv).");
+                    console.error("Insert-Fehler in sent_goals_asrom:", insertError);
+                    alert("Fehler beim Speichern: " + insertError.message);
                 }
             } catch (e) {
                 console.error("Fehler beim automatischen Live-Push:", e);
