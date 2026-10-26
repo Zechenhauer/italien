@@ -93,7 +93,7 @@
         }
 
         .section-header {
-            background-color: #7f1d1d; /* Roma Rot / Dunkelrot */
+            background-color: #7f1d1d;
             color: #ffffff;
             border: 1px solid rgba(217, 119, 6, 0.4);
             border-left: 5px solid var(--accent-color);
@@ -212,7 +212,6 @@
             text-align: left;
         }
 
-        /* Modal Styles */
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -758,7 +757,7 @@
             }
         }
 
-        // --- OPTIMIERTE LIVE-TOR-PUSH-LOGIK MIT DIREKTEM DB-ABGLEICH ---
+        // --- AKTUALISIERTE LIVE-TOR-PUSH-LOGIK (FÄNGT AUCH BEENDETE SPIELE AB) ---
         async function triggerLiveGoalPush(matchId, home, away, homeScore, awayScore, goalText) {
             try {
                 const uniqueGoalId = `${matchId}_${homeScore}:${awayScore}_${goalText}`;
@@ -978,10 +977,11 @@
                                 const currentHomeScore = homeComp.score !== undefined && statusType !== 'pre' ? parseInt(homeComp.score) : null;
                                 const currentAwayScore = awayComp.score !== undefined && statusType !== 'pre' ? parseInt(awayComp.score) : null;
 
-                                // ULTRA-ROBUSTER LIVE-TOR CHECK (Prüft direkt gegen die Datenbank, ob das Tor neu ist)
-                                if (isLive && currentHomeScore !== null && currentAwayScore !== null && (currentHomeScore > 0 || currentAwayScore > 0)) {
+                                // --- ERWEITERTER CHECK: Greift bei Live ODER frisch beendeten Spielen ---
+                                if ((isLive || statusType === 'post') && currentHomeScore !== null && currentAwayScore !== null && (currentHomeScore > 0 || currentAwayScore > 0)) {
                                     let matchKey = `ita_${ev.id}`;
-                                    triggerLiveGoalPush(matchKey, homeComp.team.displayName, awayComp.team.displayName, currentHomeScore, currentAwayScore, latestScorerText || "Tor!");
+                                    let goalTextToSave = latestScorerText || `Endstand / Zwischenstand ${currentHomeScore}:${currentAwayScore}`;
+                                    triggerLiveGoalPush(matchKey, homeComp.team.displayName, awayComp.team.displayName, currentHomeScore, currentAwayScore, goalTextToSave);
                                 }
 
                                 matches.push({
