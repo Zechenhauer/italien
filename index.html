@@ -212,6 +212,62 @@
             text-align: left;
         }
 
+        /* TIMELINE STYLES */
+        .timeline-bar-wrapper {
+            position: relative;
+            margin: 10px 0 4px 0;
+            padding: 0 5px;
+        }
+        .timeline-line {
+            position: absolute;
+            top: 50%;
+            left: 10px;
+            right: 10px;
+            height: 2px;
+            background: var(--border-color);
+            transform: translateY(-50%);
+            z-index: 1;
+        }
+        .timeline-nodes {
+            position: relative;
+            display: flex;
+            justify-content: space-around;
+            z-index: 2;
+            gap: 8px;
+            overflow-x: auto;
+        }
+        .timeline-node {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.68rem;
+            background: rgba(217, 119, 6, 0.1);
+            border: 1px solid rgba(217, 119, 6, 0.3);
+            padding: 3px 6px;
+            border-radius: 6px;
+            min-width: 55px;
+            text-align: center;
+        }
+        .timeline-time { font-weight: bold; color: var(--accent-color); margin-bottom: 1px; }
+        .timeline-score-badge {
+            background: var(--accent-color);
+            color: #000;
+            font-size: 0.6rem;
+            font-weight: bold;
+            padding: 1px 4px;
+            border-radius: 3px;
+            margin-bottom: 1px;
+        }
+        .timeline-icon-box { font-size: 0.75rem; margin-bottom: 1px; }
+        .timeline-scorer-name {
+            font-size: 0.65rem;
+            color: #ffffff;
+            text-align: center;
+            line-height: 1.1;
+            max-width: 75px;
+            word-break: break-word;
+        }
+
         .modal-overlay {
             position: fixed;
             inset: 0;
@@ -757,7 +813,6 @@
             }
         }
 
-        // --- AKTUALISIERTE LIVE-TOR-PUSH-LOGIK (FÄNGT AUCH BEENDETE SPIELE AB) ---
         async function triggerLiveGoalPush(matchId, home, away, homeScore, awayScore, goalText) {
             try {
                 const uniqueGoalId = `${matchId}_${homeScore}:${awayScore}_${goalText}`;
@@ -950,7 +1005,8 @@
                                                 team: teamName,
                                                 logo: teamLogo,
                                                 minute: clock,
-                                                isHome: isHomeTeam
+                                                isHome: isHomeTeam,
+                                                score: `${runningHome}:${runningAway}`
                                             });
                                         } else if (isYellow || isRed) {
                                             if (!playerName) playerName = isHomeTeam ? homeComp.team.displayName : awayComp.team.displayName;
@@ -977,7 +1033,6 @@
                                 const currentHomeScore = homeComp.score !== undefined && statusType !== 'pre' ? parseInt(homeComp.score) : null;
                                 const currentAwayScore = awayComp.score !== undefined && statusType !== 'pre' ? parseInt(awayComp.score) : null;
 
-                                // --- ERWEITERTER CHECK: Greift bei Live ODER frisch beendeten Spielen ---
                                 if ((isLive || statusType === 'post') && currentHomeScore !== null && currentAwayScore !== null && (currentHomeScore > 0 || currentAwayScore > 0)) {
                                     let matchKey = `ita_${ev.id}`;
                                     let goalTextToSave = latestScorerText || `Endstand / Zwischenstand ${currentHomeScore}:${currentAwayScore}`;
@@ -1122,6 +1177,30 @@
                 if (homeItems.length > 0) homeEventsHtml = `<div style="margin-top: 6px;">${homeItems.join('')}</div>`;
                 if (awayItems.length > 0) awayEventsHtml = `<div style="margin-top: 6px;">${awayItems.join('')}</div>`;
 
+                // --- TIMELINE INTEGRIERT UNTER TOREN UND KARTEN ---
+                let timelineHtml = '';
+                let matchGoals = m.goals || [];
+                if (matchGoals.length > 0) {
+                    let nodes = matchGoals.map(ev => {
+                        let minuteClean = ev.minute ? ev.minute.replace("'", "") : "";
+                        return `
+                            <div class="timeline-node">
+                                <span class="timeline-time">${minuteClean}'</span>
+                                <span class="timeline-score-badge">${ev.score || ''}</span>
+                                <div class="timeline-icon-box">⚽</div>
+                                <span class="timeline-scorer-name">${ev.playerName || ''}</span>
+                            </div>
+                        `;
+                    }).join('');
+
+                    timelineHtml = `
+                        <div class="timeline-bar-wrapper">
+                            <div class="timeline-line"></div>
+                            <div class="timeline-nodes">${nodes}</div>
+                        </div>
+                    `;
+                }
+
                 let tr = document.createElement('tr');
                 if (isRomaMatch) tr.style.background = 'rgba(217, 119, 6, 0.1)';
 
@@ -1150,6 +1229,18 @@
                     </td>
                 `;
                 tbody.appendChild(tr);
+
+                // Wenn Tore vorhanden sind, hängen wir eine eigene Zeile für die Timeline direkt unter die Paarung
+                if (timelineHtml) {
+                    let trTimeline = document.createElement('tr');
+                    if (isRomaMatch) trTimeline.style.background = 'rgba(217, 119, 6, 0.1)';
+                    trTimeline.innerHTML = `
+                        <td colspan="4" style="padding: 2px 14px 12px 14px; border-bottom: 1px solid rgba(30, 41, 59, 0.5);">
+                            ${timelineHtml}
+                        </td>
+                    `;
+                    tbody.appendChild(trTimeline);
+                }
             });
         }
 
