@@ -573,7 +573,7 @@
                     <!-- Live-Tor Simulation für Browser-Konsole / Test -->
                     <div class="bg-[#0b132b] border border-neutral-800 p-3 rounded-xl">
                         <div class="text-xs font-bold text-amber-400 uppercase mb-2">⚡ Live-Tor Push simulieren</div>
-                        <button onclick="triggerLiveGoalPush('test_roma_match_1', 'AS Rom', 'Lazio Rom', 2, 1, 'Paulo Dybala (89.\')')" class="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs uppercase py-2.5 rounded-lg transition">
+                        <button onclick="triggerLiveGoalPush('test_roma_match_1', 'AS Rom', 'Lazio Rom', 2, 1, 'Paulo Dybala', '89\'')" class="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs uppercase py-2.5 rounded-lg transition">
                             Simuliere Tor (AS Rom vs. Lazio)
                         </button>
                     </div>
@@ -813,9 +813,10 @@
             }
         }
 
-        async function triggerLiveGoalPush(matchId, home, away, homeScore, awayScore, goalText) {
+        // --- ANGEPASSTE LIVE-TOR-PUSH-LOGIK (GEMÄSS DEINEM GEWÜNSCHTEN FORMAT) ---
+        async function triggerLiveGoalPush(matchId, home, away, homeScore, awayScore, scorerName, minute, scoringTeamName) {
             try {
-                const uniqueGoalId = `${matchId}_${homeScore}:${awayScore}_${goalText}`;
+                const uniqueGoalId = `${matchId}_${homeScore}:${awayScore}_${scorerName}`;
 
                 let { error: insertError } = await supabaseClient
                     .from(SENT_GOALS_TABLE)
@@ -829,14 +830,17 @@
                     ]);
 
                 if (!insertError) {
+                    const pushTitle = `Tor für ${scoringTeamName}`;
+                    const pushBody = `${scorerName} , zum ${homeScore}:${awayScore}, ${minute}\n${home}:${away} ${homeScore}:${awayScore}`;
+
                     await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
                         method: 'POST',
                         mode: 'cors',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             table: PUSH_TABLE_NAME,
-                            title: `⚽ TOR! (${homeScore}:${awayScore})`,
-                            body: `${home} vs ${away}\nTorschütze: ${goalText}`
+                            title: pushTitle,
+                            body: pushBody
                         })
                     });
                     console.log("Roma Tor-Push erfolgreich gesendet und in DB gespeichert!");
@@ -962,7 +966,6 @@
                                 let cards = [];
                                 let runningHome = 0;
                                 let runningAway = 0;
-                                let latestScorerText = "";
 
                                 if (comp.details && Array.isArray(comp.details)) {
                                     comp.details.sort((a, b) => (parseInt(a.clock?.secs || 0) - parseInt(b.clock?.secs || 0)));
@@ -996,9 +999,6 @@
                                             let clock = detail.clock?.displayValue || "";
                                             if (clock && !clock.endsWith("'")) clock += "'";
 
-                                            let goalEntry = `${playerName} (${clock})`;
-                                            latestScorerText = goalEntry;
-
                                             goals.push({
                                                 text: `[${runningHome}:${runningAway}] ${playerName} (${clock})`,
                                                 playerName: playerName,
@@ -1008,6 +1008,11 @@
                                                 isHome: isHomeTeam,
                                                 score: `${runningHome}:${runningAway}`
                                             });
+
+                                            if (isLive || statusType === 'post') {
+                                                let matchKey = `ita_${ev.id}`;
+                                                triggerLiveGoalPush(matchKey, homeComp.team.displayName, awayComp.team.displayName, runningHome, runningAway, playerName, clock, teamName);
+                                            }
                                         } else if (isYellow || isRed) {
                                             if (!playerName) playerName = isHomeTeam ? homeComp.team.displayName : awayComp.team.displayName;
                                             let clock = detail.clock?.displayValue || "";
@@ -1032,12 +1037,6 @@
 
                                 const currentHomeScore = homeComp.score !== undefined && statusType !== 'pre' ? parseInt(homeComp.score) : null;
                                 const currentAwayScore = awayComp.score !== undefined && statusType !== 'pre' ? parseInt(awayComp.score) : null;
-
-                                if ((isLive || statusType === 'post') && currentHomeScore !== null && currentAwayScore !== null && (currentHomeScore > 0 || currentAwayScore > 0)) {
-                                    let matchKey = `ita_${ev.id}`;
-                                    let goalTextToSave = latestScorerText || `Endstand / Zwischenstand ${currentHomeScore}:${currentAwayScore}`;
-                                    triggerLiveGoalPush(matchKey, homeComp.team.displayName, awayComp.team.displayName, currentHomeScore, currentAwayScore, goalTextToSave);
-                                }
 
                                 matches.push({
                                     home: homeComp.team.displayName,
@@ -1230,7 +1229,6 @@
                 `;
                 tbody.appendChild(tr);
 
-                // Wenn Tore vorhanden sind, hängen wir eine eigene Zeile für die Timeline direkt unter die Paarung
                 if (timelineHtml) {
                     let trTimeline = document.createElement('tr');
                     if (isRomaMatch) trTimeline.style.background = 'rgba(217, 119, 6, 0.1)';
